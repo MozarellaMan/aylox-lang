@@ -1,0 +1,13 @@
+[package]
+name = "aylox-lang"
+version = "0.0.1"
+authors = ["Ayomide Bamidele <ayoeze@hotmail.com>"]
+edition = "2018"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2.33.3"
+rustyline = "7.1.0"
+thiserror = "1.0"
