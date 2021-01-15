@@ -17,7 +17,9 @@ fn main() {
         .subcommand(SubCommand::with_name("repl").about("a REPL"))
         .get_matches();
 
-    if let Some("repl") = matches.subcommand_name() { run_prompt() }
+    if let Some("repl") = matches.subcommand_name() {
+        run_prompt()
+    }
     if let Some(filepath) = matches.value_of("script") {
         //println!("Script-\n{}", file)
         if let Err(err) = run_file(filepath) {

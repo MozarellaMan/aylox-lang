@@ -1,5 +1,5 @@
 use error::AyloxError;
-use scanner::scan_tokens;
+use scanner::{Scanner};
 use std::fs;
 
 pub mod error;
@@ -14,8 +14,9 @@ pub fn run_file(path: &str) -> Result<(), AyloxError> {
 }
 
 pub fn run(contents: &str) -> Result<(), AyloxError> {
-    for token in scan_tokens(contents).iter() {
-        println!("{}", token)
+    let mut scanner = Scanner::new(contents);
+    for token in scanner.scan_tokens().iter() {
+        println!("{:?}", token)
     }
     Ok(())
 }
