@@ -1,5 +1,7 @@
-
-use crate::{error::AyloxError, token::{KEYWORDS, Token, TokenType, Tokens}};
+use crate::{
+    error::AyloxError,
+    token::{Token, TokenType, Tokens, KEYWORDS},
+};
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -53,28 +55,28 @@ impl<'a> Scanner<'a> {
                 } else {
                     self.add_token(TokenType::Bang)
                 }
-            },
+            }
             '=' => {
                 if self.match_next('=') {
                     self.add_token(TokenType::EqualEqual)
                 } else {
                     self.add_token(TokenType::Equal)
                 }
-            },
+            }
             '<' => {
                 if self.match_next('=') {
                     self.add_token(TokenType::LessEqual)
                 } else {
                     self.add_token(TokenType::Less)
                 }
-            },
+            }
             '>' => {
                 if self.match_next('=') {
                     self.add_token(TokenType::GreaterEqual)
                 } else {
                     self.add_token(TokenType::Greater)
                 }
-            },
+            }
             '/' => {
                 if self.match_next('/') {
                     // comment goes till end of line
@@ -83,12 +85,11 @@ impl<'a> Scanner<'a> {
                     }
                 } else if self.match_next('*') {
                     self.multi_line_comment()
-                }
-                else {
+                } else {
                     self.add_token(TokenType::Slash)
                 }
-            },
-            ' ' | '\r' | '\t' => {},
+            }
+            ' ' | '\r' | '\t' => {}
             '\n' => self.line += 1,
             '"' => self.string(),
             _other => {
@@ -97,13 +98,13 @@ impl<'a> Scanner<'a> {
                 } else if _other.is_ascii_alphabetic() || _other == '_' {
                     self.identifier()
                 } else {
-                println!(
-                    "{}",
-                    AyloxError::Syntax {
-                        line: self.line,
-                        found: _other.into()
-                    }
-                );
+                    println!(
+                        "{}",
+                        AyloxError::Syntax {
+                            line: self.line,
+                            found: _other.into()
+                        }
+                    );
                 }
             }
         }
@@ -119,18 +120,28 @@ impl<'a> Scanner<'a> {
 
             while self.peek().is_ascii_digit() {
                 self.advance();
-            }    
+            }
         }
 
-        let value = self.source.get(self.start..self.current).expect("could not find number");
-        self.add_token_literal(TokenType::Number(value.parse::<f64>().expect("could not read number from string")))
+        let value = self
+            .source
+            .get(self.start..self.current)
+            .expect("could not find number");
+        self.add_token_literal(TokenType::Number(
+            value
+                .parse::<f64>()
+                .expect("could not read number from string"),
+        ))
     }
 
     fn identifier(&mut self) {
         while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
-        let text = self.source.get(self.start..self.current).expect("could not read rest of token");
+        let text = self
+            .source
+            .get(self.start..self.current)
+            .expect("could not read rest of token");
         let token_type = KEYWORDS.get(text);
         if let Some(token_type) = token_type {
             self.add_token(token_type.to_owned())
@@ -156,18 +167,24 @@ impl<'a> Scanner<'a> {
         self.advance();
 
         // trim surrounding quotes
-        let value = self.source.get(self.start + 1..self.current-1).expect("could not trim quotes");
+        let value = self
+            .source
+            .get(self.start + 1..self.current - 1)
+            .expect("could not trim quotes");
         self.add_token_literal(TokenType::String(value.to_owned()))
     }
 
     fn multi_line_comment(&mut self) {
-        while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
+        while self.peek_n(2) != "*/" && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
             }
-            self.advance();
+            if let '/' = self.advance() {
+                if self.match_next('*') {
+                    self.multi_line_comment()
+                }
+            }
         }
-
         if self.is_at_end() {
             return;
         }
@@ -185,13 +202,29 @@ impl<'a> Scanner<'a> {
     }
 
     fn peek_next(&self) -> char {
-        if self.current + 1 >= self.source.len() { return '\0'; }
-        return self.source.as_bytes()[self.current + 1].into()
+        if self.current + 1 >= self.source.len() {
+            return '\0';
+        }
+        return self.source.as_bytes()[self.current + 1].into();
+    }
+
+    fn peek_n(&self, n: usize) -> &str {
+        if self.current + n >= self.source.len() {
+            return "\0";
+        }
+        return self
+            .source
+            .get(self.current..self.current + n)
+            .unwrap_or("\0");
     }
 
     fn match_next(&mut self, expected: char) -> bool {
-        if self.is_at_end() { return false; }
-        if self.source.as_bytes()[self.current] as char != expected { return false }
+        if self.is_at_end() {
+            return false;
+        }
+        if self.source.as_bytes()[self.current] as char != expected {
+            return false;
+        }
         self.current += 1;
         true
     }
@@ -202,12 +235,18 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        let text = self.source.get(self.start..self.current).expect("could not read rest of token");
+        let text = self
+            .source
+            .get(self.start..self.current)
+            .expect("could not read rest of token");
         self.tokens.push(Token::new(token_type, text, self.line));
     }
 
     fn add_token_literal(&mut self, token_type: TokenType) {
-        let text = self.source.get(self.start..self.current).expect("could not read rest of token");
+        let text = self
+            .source
+            .get(self.start..self.current)
+            .expect("could not read rest of token");
         match token_type {
             TokenType::String(literal) => {
                 self.tokens
@@ -223,5 +262,22 @@ impl<'a> Scanner<'a> {
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Scanner;
+
+    #[test]
+    fn nested_multi_line_comment() {
+        let input = "/* /* ... */ */";
+        let mut scanner = Scanner::new(input);
+        let output = scanner.scan_tokens();
+
+        // println!("{:#?}", output);
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(2 + 2, 4);
     }
 }

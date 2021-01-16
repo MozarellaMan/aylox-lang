@@ -8,5 +8,5 @@ pub enum AyloxError {
     #[error("Syntax Error: Unexpected token at line {line}, found '{found}'")]
     Syntax { line: usize, found: String },
     #[error("Syntax Error: Unterminated string.")]
-    UnterminatedString
+    UnterminatedString,
 }

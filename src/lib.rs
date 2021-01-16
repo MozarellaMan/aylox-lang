@@ -1,5 +1,5 @@
 use error::AyloxError;
-use scanner::{Scanner};
+use scanner::Scanner;
 use std::fs;
 
 pub mod error;
