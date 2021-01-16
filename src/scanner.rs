@@ -81,7 +81,10 @@ impl<'a> Scanner<'a> {
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
-                } else {
+                } else if self.match_next('*') {
+                    self.multi_line_comment()
+                }
+                else {
                     self.add_token(TokenType::Slash)
                 }
             },
@@ -157,6 +160,22 @@ impl<'a> Scanner<'a> {
         self.add_token_literal(TokenType::String(value.to_owned()))
     }
 
+    fn multi_line_comment(&mut self) {
+        while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            return;
+        }
+        // the closing * and /
+        self.advance();
+        self.advance();
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() {
             '\0'
@@ -205,8 +224,4 @@ impl<'a> Scanner<'a> {
             _ => {}
         }
     }
-}
-
-pub fn scan_tokens(input: &str) -> Vec<&str> {
-    input.split(' ').collect::<_>()
 }
