@@ -5,6 +5,7 @@ use scanner::Scanner;
 use std::fs;
 
 pub mod ast;
+pub mod ast_printer;
 pub mod error;
 pub mod prompt;
 pub mod scanner;

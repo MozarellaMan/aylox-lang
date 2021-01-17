@@ -1,6 +1,25 @@
-use aylox_lang::{prompt::run_prompt, run_file};
+use ast_printer::AstPrinter;
+use aylox_lang::{
+    ast::*,
+    ast_printer,
+    prompt::run_prompt,
+    run_file,
+    token::{Token, TokenType},
+};
 use clap::{App, Arg, SubCommand};
 fn main() {
+    let expr = Expr::Binary(Binary::new(
+        Box::new(Expr::Unary(Unary::new(
+            Token::new(TokenType::Minus, "-", 1),
+            Box::new(Expr::Literal(Literal::new(LiteralVal::Number(123f64)))),
+        ))),
+        Token::new(TokenType::Star, "*", 1),
+        Box::new(Expr::Grouping(Grouping::new(Box::new(Expr::Literal(
+            Literal::new(LiteralVal::Number(45.67)),
+        ))))),
+    ));
+    let mut printer = AstPrinter;
+    println!("{}", printer.print(&expr));
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     let matches = App::new("Aylox")
         .version(VERSION)

@@ -42,17 +42,28 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
             structs.push(struct_name);
             base_enum.new_variant(struct_name).tuple(struct_name);
             define_struct_type(&mut scope, base_name, struct_name, fields);
+        } else {
+            scope
+                .new_struct(_type)
+                .vis("pub")
+                .derive("Debug")
+                .derive("Copy")
+                .derive("Clone")
+                .derive("new");
+            // base_enum.new_variant(_type).tuple(_type);
+            // structs.push(_type);
         }
     }
     scope.push_enum(base_enum);
-
+    structs.push(base_name);
     let visitor = scope.new_trait("Visitor").generic("T").vis("pub");
     for _struct in structs.iter() {
         let func_name = format!("visit_{}", _struct.to_lowercase());
+        let _type = format!("&{}", _struct);
         visitor
             .new_fn(&func_name)
             .arg_mut_self()
-            .arg(&_struct.to_lowercase(), *_struct)
+            .arg(&_struct.to_lowercase(), &_type)
             .ret("T");
     }
 
@@ -114,7 +125,8 @@ fn define_struct_type(scope: &mut Scope, base_name: &str, struct_name: &str, fie
         } else {
             field_type.to_owned()
         };
-        new_struct.field(field_name, field_type);
+        let field_name = format!("pub {}", field_name);
+        new_struct.field(&field_name, field_type);
     }
 }
 
@@ -123,7 +135,8 @@ fn main() {
         Path::new("C:/Users/ayoez/Documents/Rust-Projects/language-dev/aylox-lang/src/ast.rs");
     let base_name = "Expr";
     let type_list = [
-        "LiteralVal / String String, Number f64",
+        "Nil",
+        "LiteralVal / String String, Number f64, Nil Nil",
         "Binary     : Expr left, Token operator, Expr right",
         "Grouping   : Expr expression",
         "Literal    : LiteralVal value",
