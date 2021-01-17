@@ -36,3 +36,13 @@ pub enum Expr {
     Literal(Literal),
     Unary(Unary),
 }
+
+pub trait Visitor<T> {
+    fn visit_binary(&mut self, binary: Binary) -> T;
+
+    fn visit_grouping(&mut self, grouping: Grouping) -> T;
+
+    fn visit_literal(&mut self, literal: Literal) -> T;
+
+    fn visit_unary(&mut self, unary: Unary) -> T;
+}

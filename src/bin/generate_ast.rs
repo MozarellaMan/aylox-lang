@@ -10,7 +10,7 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
 
     let mut base_enum = Enum::new(base_name);
     base_enum.vis("pub").derive("Debug").derive("Clone");
-
+    let mut structs = Vec::new();
     for _type in types.iter() {
         if _type.contains('/') {
             let enum_name: &str = _type
@@ -39,11 +39,23 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
                 .get(1)
                 .unwrap()
                 .trim();
+            structs.push(struct_name);
             base_enum.new_variant(struct_name).tuple(struct_name);
             define_struct_type(&mut scope, base_name, struct_name, fields);
         }
     }
     scope.push_enum(base_enum);
+
+    let visitor = scope.new_trait("Visitor").generic("T").vis("pub");
+    for _struct in structs.iter() {
+        let func_name = format!("visit_{}", _struct.to_lowercase());
+        visitor
+            .new_fn(&func_name)
+            .arg_mut_self()
+            .arg(&_struct.to_lowercase(), *_struct)
+            .ret("T");
+    }
+
     scope.to_string()
 }
 
@@ -107,7 +119,8 @@ fn define_struct_type(scope: &mut Scope, base_name: &str, struct_name: &str, fie
 }
 
 fn main() {
-    let output_path = Path::new("../ast.rs");
+    let output_path =
+        Path::new("C:/Users/ayoez/Documents/Rust-Projects/language-dev/aylox-lang/src/ast.rs");
     let base_name = "Expr";
     let type_list = [
         "LiteralVal / String String, Number f64",
