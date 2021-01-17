@@ -1,7 +1,10 @@
+#[macro_use]
+extern crate derive_new;
 use error::AyloxError;
 use scanner::Scanner;
 use std::fs;
 
+pub mod ast;
 pub mod error;
 pub mod prompt;
 pub mod scanner;
