@@ -1,3 +1,5 @@
+use std::{fs::File, io::Write, path::Path};
+
 use codegen::{Enum, Scope};
 
 extern crate codegen;
@@ -18,7 +20,7 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
                 .unwrap()
                 .trim();
             let variants: &str = _type
-                .split("/")
+                .split('/')
                 .collect::<Vec<&str>>()
                 .get(1)
                 .unwrap()
@@ -105,6 +107,7 @@ fn define_struct_type(scope: &mut Scope, base_name: &str, struct_name: &str, fie
 }
 
 fn main() {
+    let output_path = Path::new("../ast.rs");
     let base_name = "Expr";
     let type_list = [
         "LiteralVal / String String, Number f64",
@@ -113,7 +116,20 @@ fn main() {
         "Literal    : LiteralVal value",
         "Unary      : Token operator, Expr right",
     ];
-    println!("{}", generate_ast(base_name, &type_list));
+
+    let mut file = match File::create(output_path) {
+        Err(why) => panic!("couldn't open: {}", why),
+        Ok(file) => file,
+    };
+
+    match file.write_all(generate_ast(base_name, &type_list).as_bytes()) {
+        Ok(_) => {
+            println!("Succesfully written to {}", output_path.display())
+        }
+        Err(why) => {
+            panic!("couldn't write to {}: {}", output_path.display(), why)
+        }
+    }
 }
 
 #[cfg(test)]
