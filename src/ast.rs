@@ -1,5 +1,7 @@
 use crate::token::Token;
 
+pub type Expressions<'a> = &'a [&'a Expr];
+
 #[derive(Debug, Copy, Clone, new)]
 pub struct Nil;
 

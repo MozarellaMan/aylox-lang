@@ -31,7 +31,7 @@ impl Visitor<String> for AstPrinter {
     }
 }
 
-fn parenthesize(visitor: &mut AstPrinter, operator: &str, expressions: &[&Expr]) -> String {
+fn parenthesize(visitor: &mut AstPrinter, operator: &str, expressions: Expressions) -> String {
     let mut builder = String::new();
     builder.push('(');
     builder.push_str(operator);
