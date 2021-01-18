@@ -50,5 +50,12 @@ pub trait Visitor<T> {
 
     fn visit_unary(&mut self, unary: &Unary) -> T;
 
-    fn visit_expr(&mut self, expr: &Expr) -> T;
+    fn visit_expr(&mut self, expr: &Expr) -> T {
+        match &expr {
+            Expr::Binary(val) => self.visit_binary(val),
+            Expr::Grouping(val) => self.visit_grouping(val),
+            Expr::Literal(val) => self.visit_literal(val),
+            Expr::Unary(val) => self.visit_unary(val),
+        }
+    }
 }

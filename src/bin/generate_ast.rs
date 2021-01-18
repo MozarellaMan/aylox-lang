@@ -11,6 +11,8 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
     let mut base_enum = Enum::new(base_name);
     base_enum.vis("pub").derive("Debug").derive("Clone");
     let mut structs = Vec::new();
+    let mut visitor_names = Vec::new();
+    let mut non_base_types = Vec::new();
     for _type in types.iter() {
         if _type.contains('/') {
             let enum_name: &str = _type
@@ -40,6 +42,7 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
                 .unwrap()
                 .trim();
             structs.push(struct_name);
+            non_base_types.push(struct_name);
             base_enum.new_variant(struct_name).tuple(struct_name);
             define_struct_type(&mut scope, base_name, struct_name, fields);
         } else {
@@ -59,12 +62,34 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
     let visitor = scope.new_trait("Visitor").generic("T").vis("pub");
     for _struct in structs.iter() {
         let func_name = format!("visit_{}", _struct.to_lowercase());
+        visitor_names.push(func_name.clone());
         let _type = format!("&{}", _struct);
-        visitor
-            .new_fn(&func_name)
-            .arg_mut_self()
-            .arg(&_struct.to_lowercase(), &_type)
-            .ret("T");
+        if _struct == &base_name {
+            let base_visitor = visitor
+                .new_fn(&func_name)
+                .arg_mut_self()
+                .arg(&base_name.to_lowercase(), &_type)
+                .ret("T")
+                .line(format!("match {} {{", _type.to_lowercase()));
+            for type_name in non_base_types.iter() {
+                base_visitor.line(format!(
+                    "\t{}::{}(val) => self.{}(val),",
+                    base_name,
+                    type_name,
+                    visitor_names
+                        .iter()
+                        .find(|x| x.contains(&type_name.to_lowercase()))
+                        .unwrap()
+                ));
+            }
+            base_visitor.line("}");
+        } else {
+            visitor
+                .new_fn(&func_name)
+                .arg_mut_self()
+                .arg(&_struct.to_lowercase(), &_type)
+                .ret("T");
+        }
     }
 
     scope.to_string()

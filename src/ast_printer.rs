@@ -29,15 +29,6 @@ impl Visitor<String> for AstPrinter {
     fn visit_unary(&mut self, unary: &Unary) -> String {
         parenthesize(self, &unary.operator.lexeme, &[&unary.right])
     }
-
-    fn visit_expr(&mut self, expr: &Expr) -> String {
-        match expr {
-            Expr::Binary(val) => self.visit_binary(val),
-            Expr::Grouping(val) => self.visit_grouping(val),
-            Expr::Literal(val) => self.visit_literal(val),
-            Expr::Unary(val) => self.visit_unary(val),
-        }
-    }
 }
 
 fn parenthesize(visitor: &mut AstPrinter, operator: &str, expressions: &[&Expr]) -> String {
