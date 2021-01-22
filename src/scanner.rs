@@ -1,5 +1,5 @@
 use crate::{
-    error::AyloxError,
+    error::{AyloxError, SyntaxError},
     token::{Token, TokenType, Tokens, KEYWORDS},
 };
 
@@ -100,10 +100,10 @@ impl<'a> Scanner<'a> {
                 } else {
                     println!(
                         "{}",
-                        AyloxError::Syntax {
+                        AyloxError::SyntaxError(SyntaxError::UnexpectedToken {
                             line: self.line,
                             found: _other.into()
-                        }
+                        })
                     );
                 }
             }
@@ -159,7 +159,10 @@ impl<'a> Scanner<'a> {
         }
 
         if self.is_at_end() {
-            println!("{}", AyloxError::UnterminatedString);
+            println!(
+                "{}",
+                AyloxError::SyntaxError(SyntaxError::UnterminatedString)
+            );
             return;
         }
 

@@ -18,7 +18,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, is_enum_variant)]
 pub enum TokenType {
     // single char tokens
     LeftParen,
@@ -64,6 +64,7 @@ pub enum TokenType {
     True,
     Var,
     While,
+    Print,
 
     Eof,
 }
@@ -83,5 +84,6 @@ pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "this" => TokenType::This,
     "true" => TokenType::True,
     "var" => TokenType::Var,
-    "while" => TokenType::While
+    "while" => TokenType::While,
+    "print" => TokenType::Print
 };

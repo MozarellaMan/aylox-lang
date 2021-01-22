@@ -23,6 +23,7 @@ impl Visitor<String> for AstPrinter {
             LiteralVal::String(val) => val.clone(),
             LiteralVal::Number(val) => val.to_string(),
             LiteralVal::Nil(_) => "Nil".to_owned(),
+            LiteralVal::Bool(val) => val.to_string(),
         }
     }
 

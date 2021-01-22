@@ -10,6 +10,7 @@ pub enum LiteralVal {
     String(String),
     Number(f64),
     Nil(Nil),
+    Bool(bool),
 }
 
 #[derive(Debug, Clone, new)]
