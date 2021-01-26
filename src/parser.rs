@@ -178,7 +178,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn synchronize(&mut self) {
+    fn _synchronize(&mut self) {
         self.advance();
 
         while !self.is_at_end() {

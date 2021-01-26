@@ -2,10 +2,10 @@ use crate::token::Token;
 
 pub type Expressions<'a> = &'a [&'a Expr];
 
-#[derive(Debug, Copy, Clone, new)]
+#[derive(Debug, Copy, Clone, new, Eq, PartialEq)]
 pub struct Nil;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LiteralVal {
     String(String),
     Number(f64),

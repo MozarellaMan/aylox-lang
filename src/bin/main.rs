@@ -1,7 +1,4 @@
-use aylox_lang::{
-    prompt::run_prompt,
-    run_file,
-};
+use aylox_lang::{prompt::run_prompt, run_file};
 use clap::{App, Arg, SubCommand};
 
 fn main() {

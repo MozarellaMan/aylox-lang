@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::ast::Expr;
+
 #[derive(Error, Debug)]
 pub enum ParserError {
     #[error("At line {line}, found '{lexeme}'. {msg}")]
@@ -20,6 +22,14 @@ pub enum SyntaxError {
     UnterminatedString,
 }
 #[derive(Error, Debug)]
+pub enum RuntimeError {
+    #[error("'{lexeme}' operands must be {expected}")]
+    InvalidOperand { lexeme: String, expected: String },
+    #[error("'{lexeme}' not available for {expression:?}")]
+    InvalidOperator { lexeme: String, expression: Expr },
+}
+
+#[derive(Error, Debug)]
 pub enum AyloxError {
     #[error("IO error: `{0}`")]
     IoError(#[from] std::io::Error),
@@ -29,4 +39,6 @@ pub enum AyloxError {
     SyntaxError(#[from] SyntaxError),
     #[error("Parser error: {0}")]
     ParserError(#[from] ParserError),
+    #[error("Runtime error: {0}")]
+    RuntimeError(#[from] RuntimeError),
 }
