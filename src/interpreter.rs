@@ -90,8 +90,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::BangEqual => Ok(Bool(!is_equal(&left, &right))),
-            TokenType::EqualEqual => Ok(Bool(is_equal(&left, &right))),
+            TokenType::BangEqual => Ok(Bool(left != right)),
+            TokenType::EqualEqual => Ok(Bool(left == right)),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: binary.operator.lexeme.clone(),
                 expression: Expr::Binary(binary.clone()),
@@ -127,10 +127,6 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             }),
         }
     }
-}
-
-fn is_equal(left: &LiteralVal, right: &LiteralVal) -> bool {
-    left == right
 }
 
 fn is_truthy(literal: LiteralVal) -> bool {

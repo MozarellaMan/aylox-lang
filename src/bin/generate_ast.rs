@@ -6,7 +6,6 @@ extern crate codegen;
 
 pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
     let mut scope = Scope::new();
-    scope.import("crate::token", "Token");
 
     let mut base_enum = Enum::new(base_name);
     base_enum.vis("pub").derive("Debug").derive("Clone");
@@ -52,7 +51,9 @@ pub fn generate_ast(base_name: &str, types: &[&str]) -> String {
                 .derive("Debug")
                 .derive("Copy")
                 .derive("Clone")
-                .derive("new");
+                .derive("new")
+                .derive("Eq")
+                .derive("PartialEq");
             // base_enum.new_variant(_type).tuple(_type);
             // structs.push(_type);
         }
@@ -101,7 +102,8 @@ fn define_enum_type(scope: &mut Scope, base_name: &str, enum_name: &str, variant
         .new_enum(enum_name)
         .vis("pub")
         .derive("Debug")
-        .derive("Clone");
+        .derive("Clone")
+        .derive("PartialEq");
     for variant in variants.iter() {
         let variant_name: &str = variant
             .split(' ')
@@ -155,13 +157,14 @@ fn define_struct_type(scope: &mut Scope, base_name: &str, struct_name: &str, fie
     }
 }
 
+
 fn main() {
     let output_path =
         Path::new("C:/Users/ayoez/Documents/Rust-Projects/language-dev/aylox-lang/src/ast.rs");
     let base_name = "Expr";
     let type_list = [
         "Nil",
-        "LiteralVal / String String, Number f64, Nil Nil",
+        "LiteralVal / String String, Number f64, Nil Nil, Bool bool",
         "Binary     : Expr left, Token operator, Expr right",
         "Grouping   : Expr expression",
         "Literal    : LiteralVal value",
