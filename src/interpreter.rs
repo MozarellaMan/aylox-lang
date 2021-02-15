@@ -82,7 +82,7 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             }
             TokenType::LessEqual => {
                 if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Bool(x >= y))
+                    Ok(Bool(x <= y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
