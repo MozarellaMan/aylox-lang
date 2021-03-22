@@ -11,9 +11,11 @@ Current version: 0.0.1
 - evaluation of boolean expressions (`2 > 5` => `false`)
 - string concatenation (`"Hello " + "World!"` => `Hello World!`)
 - ast code generator (in `src/bin/generate_ast.rs`)
+
 ### Planned
 
 - everything else in the book :)
+
 ## About
 
 This repo holds my progress in follwing the [Crafting Interpreters](https://craftinginterpreters.com/) book by Bob Nystrom. The book's first section is in Java, and second in C. I plan to do both in Rust to learn the language and because it's pretty fun!
@@ -23,7 +25,5 @@ This repo holds my progress in follwing the [Crafting Interpreters](https://craf
 `cargo run`
 
 `cargo test`
-
-
 
 License: MIT

@@ -1,21 +1,5 @@
-[package]
-name = "aylox-lang"
-version = "0.0.1"
-authors = ["Ayomide Bamidele <ayoeze@hotmail.com>"]
-edition = "2018"
-license = "MIT"
-default-run = "main"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-clap = "2.33.3"
-rustyline = "7.1.0"
-thiserror = "1.0"
-phf = {version = "0.8.0", features = ["macros"]}
-derive-new = "0.5.8"
-codegen = "0.1.3"
-derive_is_enum_variant = "0.1.1"
-
-[dev-dependencies]
-indoc = "1.0"
+[workspace]
+members = [
+    "ast-gen",
+    "aylox-lang"
+]
