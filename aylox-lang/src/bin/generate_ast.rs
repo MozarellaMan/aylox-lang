@@ -162,6 +162,7 @@ fn main() {
     let output_path =
         Path::new("C:/Users/ayoez/Documents/Rust-Projects/language-dev/aylox-lang/src/ast.rs");
     let base_name = "Expr";
+    let base_name_2 = "Stmt";
     let type_list = [
         "Nil",
         "LiteralVal / String String, Number f64, Nil Nil, Bool bool",
@@ -170,6 +171,12 @@ fn main() {
         "Literal    : LiteralVal value",
         "Unary      : Token operator, Expr right",
     ];
+    let type_list2 = [
+        "Expression : Expr expression",
+        "Print      : Expr expression",
+    ];
+
+
 
     let mut file = match File::create(output_path) {
         Err(why) => panic!("couldn't open: {}", why),

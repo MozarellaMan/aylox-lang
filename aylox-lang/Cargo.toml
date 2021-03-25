@@ -17,6 +17,7 @@ phf = {version = "0.8.0", features = ["macros"]}
 derive-new = "0.5.8"
 codegen = "0.1.3"
 derive_is_enum_variant = "0.1.1"
+ast-gen = { version = "*", path="../ast-gen"}
 
 [dev-dependencies]
 indoc = "1.0"
