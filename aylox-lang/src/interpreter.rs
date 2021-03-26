@@ -1,4 +1,4 @@
-use crate::{ast::LiteralVal::*, ast::*, error::RuntimeError, token::TokenType};
+use crate::{ast::*, error::RuntimeError, token::TokenType};
 
 pub struct Interpreter;
 impl Interpreter {
@@ -6,15 +6,15 @@ impl Interpreter {
         self.visit_expr(expr)
     }
 }
-impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
+impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
     fn visit_binary(&mut self, binary: &Binary) -> Result<LiteralVal, RuntimeError> {
         let left = self.visit_expr(&binary.left)?;
         let right = self.visit_expr(&binary.right)?;
 
         match binary.operator._type {
             TokenType::Minus => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Number(x - y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Number(x - y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -23,8 +23,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Slash => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Number(x / y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Number(x / y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -33,8 +33,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Star => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Number(x * y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Number(x * y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -43,16 +43,18 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Plus => match (left, right) {
-                (Number(x), Number(y)) => Ok(Number(x + y)),
-                (String(x), String(y)) => Ok(String(format!("{}{}", x, y))),
+                (LiteralVal::Number(x), LiteralVal::Number(y)) => Ok(LiteralVal::Number(x + y)),
+                (LiteralVal::String(x), LiteralVal::String(y)) => {
+                    Ok(LiteralVal::String(format!("{}{}", x, y)))
+                }
                 _ => Err(RuntimeError::InvalidOperand {
                     lexeme: binary.operator.lexeme.clone(),
                     expected: "Numbers OR Strings".to_string(),
                 }),
             },
             TokenType::Greater => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Bool(x > y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Bool(x > y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -61,8 +63,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::GreaterEqual => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Bool(x >= y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Bool(x >= y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -71,8 +73,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Less => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Bool(x < y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Bool(x < y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -81,8 +83,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::LessEqual => {
-                if let (Number(x), Number(y)) = (left, right) {
-                    Ok(Bool(x <= y))
+                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
+                    Ok(LiteralVal::Bool(x <= y))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -90,8 +92,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::BangEqual => Ok(Bool(left != right)),
-            TokenType::EqualEqual => Ok(Bool(left == right)),
+            TokenType::BangEqual => Ok(LiteralVal::Bool(left != right)),
+            TokenType::EqualEqual => Ok(LiteralVal::Bool(left == right)),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: binary.operator.lexeme.clone(),
                 expression: Expr::Binary(binary.clone()),
@@ -111,8 +113,8 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
         let right = self.visit_expr(&unary.right)?;
         match unary.operator._type {
             TokenType::Minus => {
-                if let Number(num) = right {
-                    Ok(Number(-num))
+                if let LiteralVal::Number(num) = right {
+                    Ok(LiteralVal::Number(-num))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: unary.operator.lexeme.clone(),
@@ -120,7 +122,7 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::Bang => Ok(Bool(!is_truthy(right))),
+            TokenType::Bang => Ok(LiteralVal::Bool(!is_truthy(right))),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: unary.operator.lexeme.clone(),
                 expression: Expr::Unary(unary.clone()),
@@ -132,7 +134,7 @@ impl Visitor<Result<LiteralVal, RuntimeError>> for Interpreter {
 fn is_truthy(literal: LiteralVal) -> bool {
     match literal {
         LiteralVal::Nil(_) => false,
-        Bool(boolean) => boolean,
+        LiteralVal::Bool(boolean) => boolean,
         _ => true,
     }
 }

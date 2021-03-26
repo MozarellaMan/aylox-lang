@@ -5,7 +5,7 @@ impl AstPrinter {
         self.visit_expr(expression)
     }
 }
-impl Visitor<String> for AstPrinter {
+impl ExprVisitor<String> for AstPrinter {
     fn visit_binary(&mut self, binary: &Binary) -> String {
         parenthesize(
             self,
