@@ -4,6 +4,8 @@ use crate::ast::Expr;
 
 #[derive(Error, Debug)]
 pub enum ParserError {
+    #[error("Parsing Failed.")]
+    Generic,
     #[error("At line {line}, found '{lexeme}'. {msg}")]
     UnexpectedToken {
         line: usize,
@@ -27,6 +29,8 @@ pub enum RuntimeError {
     InvalidOperand { lexeme: String, expected: String },
     #[error("'{lexeme}' not available for {expression:?}")]
     InvalidOperator { lexeme: String, expression: Expr },
+    #[error("Variable {lexeme} is undefined.")]
+    UndefinedVariable { lexeme: String },
 }
 
 #[derive(Error, Debug)]

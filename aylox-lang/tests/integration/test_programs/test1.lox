@@ -1,0 +1,5 @@
+print "one";
+print true;
+var a = 9;
+var b = 2;
+print a + b;

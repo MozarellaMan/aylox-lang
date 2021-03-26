@@ -1,10 +1,9 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use syn::{
     bracketed, parse::Parse, parse_macro_input, parse_quote, punctuated::Punctuated,
     spanned::Spanned, token, Ident, LitStr, Token, Type,
 };
-
 struct Definition {
     name: LitStr,
     _first_comma: Token![,],
@@ -33,6 +32,12 @@ pub fn ast_gen(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 fn transform_definition(input: Definition) -> TokenStream {
     let mut output = TokenStream::new();
     let base_name = input.name.value();
+    let base_visitor_mutability = base_name.starts_with('~');
+    let base_name = if base_visitor_mutability {
+        base_name.strip_prefix('~').unwrap().to_string()
+    } else {
+        base_name
+    };
     let base_name_plural: String = get_plural(&base_name);
     let base_name_plural = Ident::new(&base_name_plural, base_name_plural.span());
     let base_ident = Ident::new(&base_name, base_name.span());
@@ -85,18 +90,34 @@ fn transform_definition(input: Definition) -> TokenStream {
         pub enum #base_ident {
             #(#structs(#structs)),*
         }
+    };
+    let visitor = if base_visitor_mutability {
+        quote! {
+            pub trait #base_visitor_trait_name<T> {
+                #(fn #visitor_names(&mut self, #non_base_types: &#structs) -> T);*;
 
-        pub trait #base_visitor_trait_name<T> {
-            #(fn #visitor_names(&mut self, #non_base_types: &#structs) -> T);*;
+                fn #base_visitor_name(&mut self, #base_ident_lowercase: &#base_ident) -> T {
+                    match &#base_ident_lowercase {
+                        #(#base_ident::#structs(val) => self.#visitor_names(val)),*
+                    }
+                }
+            }
+        }
+    } else {
+        quote! {
+            pub trait #base_visitor_trait_name<T> {
+                #(fn #visitor_names(&self, #non_base_types: &#structs) -> T);*;
 
-            fn #base_visitor_name(&mut self, #base_ident_lowercase: &#base_ident) -> T {
-                match &#base_ident_lowercase {
-                    #(#base_ident::#structs(val) => self.#visitor_names(val)),*
+                fn #base_visitor_name(&self, #base_ident_lowercase: &#base_ident) -> T {
+                    match &#base_ident_lowercase {
+                        #(#base_ident::#structs(val) => self.#visitor_names(val)),*
+                    }
                 }
             }
         }
     };
-    output.extend(base.into_token_stream());
+    output.extend(base);
+    output.extend(visitor);
     output
 }
 
@@ -152,12 +173,25 @@ fn generate_types_names(v: &&str, base_name: &str, types: &mut Vec<Type>, names:
     let split = v.split(' ').map(|s| s.trim()).collect::<Vec<_>>();
     let _type = split[0];
     let name = split[1];
-    let type_ident = Ident::new(_type, _type.span());
+    let type_optional = _type.ends_with('?');
+    let type_ident = if type_optional {
+        let _type = _type.strip_suffix('?').unwrap();
+        Ident::new(_type, _type.span())
+    } else {
+        Ident::new(_type, _type.span())
+    };
     let _type = if _type == base_name {
         parse_quote!(Box<#type_ident>)
     } else {
         parse_quote!(#type_ident)
     };
+
+    let _type = if type_optional {
+        parse_quote!(Option<#_type>)
+    } else {
+        _type
+    };
+
     names.push(Ident::new(name, name.span()));
     types.push(_type);
 }

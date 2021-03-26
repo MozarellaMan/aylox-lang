@@ -2,8 +2,6 @@
 extern crate derive_new;
 #[macro_use]
 extern crate derive_is_enum_variant;
-use ast::{Expr, Literal};
-use ast_printer::AstPrinter;
 use error::AyloxError;
 use interpreter::Interpreter;
 use parser::Parser;
@@ -12,6 +10,7 @@ use std::fs;
 
 pub mod ast;
 pub mod ast_printer;
+pub mod environment;
 pub mod error;
 pub mod interpreter;
 pub mod parser;
@@ -28,18 +27,11 @@ pub fn run_file(path: &str) -> Result<(), AyloxError> {
 pub fn run(contents: &str) -> Result<(), AyloxError> {
     let mut scanner = Scanner::new(contents);
     let mut parser = Parser::new(scanner.scan_tokens());
-    let expression = parser.parse();
-    let mut printer = AstPrinter;
-    let mut interpreter = Interpreter;
+    let statements = parser.parse()?;
+    let mut interpreter = Interpreter::new();
 
-    match expression {
-        Ok(expr) => match interpreter.interpret(&expr) {
-            Ok(val) => {
-                println!("{}", printer.print(&Expr::Literal(Literal { value: val })));
-            }
-            Err(err) => println!("{}", err),
-        },
-        Err(err) => println!("{}", err),
+    if let Err(err) = interpreter.interpret(&statements) {
+        println!("{}", err);
     }
     Ok(())
 }

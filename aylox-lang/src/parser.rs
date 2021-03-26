@@ -3,21 +3,25 @@ use std::mem;
 use crate::{
     ast::*,
     error::ParserError,
-    token::{Token, TokenType, Tokens},
+    token::{Token, TokenType},
 };
 
 pub struct Parser<'a> {
-    tokens: &'a Tokens,
+    tokens: &'a [Token],
     current: usize,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a Tokens) -> Self {
+    pub fn new(tokens: &'a [Token]) -> Self {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParserError> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            statements.push(self.declaration()?)
+        }
+        Ok(statements)
     }
 
     fn advance(&mut self) -> &Token {
@@ -39,6 +43,63 @@ impl<'a> Parser<'a> {
 
     fn peek(&self) -> &Token {
         self.tokens.get(self.current).expect("no token found")
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, ParserError> {
+        if self.token_match(&[TokenType::Var]) {
+            if let Ok(stmt) = self.var_declaration() {
+                return Ok(stmt);
+            } else {
+                self.synchronize()
+            }
+        }
+
+        if let Ok(stmt) = self.statement() {
+            Ok(stmt)
+        } else {
+            self.synchronize();
+            Err(ParserError::Generic)
+        }
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParserError> {
+        if self.token_match(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
+        let name = self
+            .consume(
+                &TokenType::Identifier(String::new()),
+                "Expect variable name",
+            )?
+            .clone();
+        let mut initializer: Option<Expr> = None;
+
+        if self.token_match(&[TokenType::Equal]) {
+            initializer = Some(self.expression()?)
+        }
+
+        self.consume(
+            &TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        )?;
+        Ok(Stmt::Var(Var::new(name, initializer)))
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+        let value = self.expression()?;
+        self.consume(&TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Print(Print::new(value)))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression()?;
+        self.consume(&TokenType::Semicolon, "Expect ';' after expression.")?;
+        Ok(Stmt::Expression(Expression::new(expr)))
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
@@ -133,7 +194,11 @@ impl<'a> Parser<'a> {
             return Ok(Expr::Literal(Literal::new(LiteralVal::Nil(Nil))));
         }
 
-        if self.token_match(&[TokenType::Number(0f64), TokenType::String("".to_owned())]) {
+        if self.token_match(&[
+            TokenType::Number(0f64),
+            TokenType::String(String::new()),
+            TokenType::Identifier(String::new()),
+        ]) {
             match &self.previous()._type {
                 TokenType::Number(num) => {
                     return Ok(Expr::Literal(Literal::new(LiteralVal::Number(*num))))
@@ -142,6 +207,9 @@ impl<'a> Parser<'a> {
                     return Ok(Expr::Literal(Literal::new(LiteralVal::String(
                         string.clone(),
                     ))))
+                }
+                TokenType::Identifier(_) => {
+                    return Ok(Expr::Variable(Variable::new(self.previous().clone())))
                 }
                 _ => {}
             }
@@ -178,7 +246,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn _synchronize(&mut self) {
+    fn synchronize(&mut self) {
         self.advance();
 
         while !self.is_at_end() {
