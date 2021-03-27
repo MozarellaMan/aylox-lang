@@ -181,8 +181,7 @@ fn generate_types_names(v: &&str, base_name: &str, types: &mut Vec<Type>, names:
     } else if type_many {
         let _type = _type.strip_suffix('*').unwrap();
         Ident::new(_type, _type.span())
-    } 
-    else {
+    } else {
         Ident::new(_type, _type.span())
     };
     let _type = if _type == base_name {
@@ -193,7 +192,7 @@ fn generate_types_names(v: &&str, base_name: &str, types: &mut Vec<Type>, names:
 
     let _type = if type_many {
         parse_quote!(Vec<#type_ident>)
-    } else  {
+    } else {
         _type
     };
 

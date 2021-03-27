@@ -31,7 +31,7 @@ impl Environment {
             Ok(())
         } else {
             if let Some(enclosing) = &self.enclosing {
-                return enclosing.borrow_mut().assign(name, value)
+                return enclosing.borrow_mut().assign(name, value);
             }
             Err(RuntimeError::UndefinedVariable {
                 lexeme: name.lexeme.clone(),
@@ -40,26 +40,24 @@ impl Environment {
     }
 
     pub fn get(&self, name: &Token) -> Result<Rc<Expr>, RuntimeError> {
-        let result = self
-            .values
-            .get(&name.lexeme)
-            .map(|v| v.clone())
-            .ok_or(RuntimeError::UndefinedVariable {
-                lexeme: name.lexeme.clone(),
-            });
+        let result =
+            self.values
+                .get(&name.lexeme)
+                .cloned()
+                .ok_or(RuntimeError::UndefinedVariable {
+                    lexeme: name.lexeme.clone(),
+                });
 
         match result {
             Ok(res) => Ok(res),
-            Err(err) => {
-                match &self.enclosing {
-                    Some(enclosing) => {
-                        let enclosing= enclosing.borrow();
-                        let result = enclosing.get(name)?;
-                        Ok(result)
-                    }
-                    None => Err(err),
+            Err(err) => match &self.enclosing {
+                Some(enclosing) => {
+                    let enclosing = enclosing.borrow();
+                    let result = enclosing.get(name)?;
+                    Ok(result)
                 }
-            }
+                None => Err(err),
+            },
         }
     }
 }

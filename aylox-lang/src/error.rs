@@ -32,7 +32,7 @@ pub enum RuntimeError {
     #[error("Variable '{lexeme}' is undefined")]
     UndefinedVariable { lexeme: String },
     #[error("Runtime environment does not exist. This is likely an interpreter error.")]
-    EnvironmentError
+    EnvironmentError,
 }
 
 #[derive(Error, Debug)]

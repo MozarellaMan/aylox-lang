@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
 
     fn block_statement(&mut self) -> Result<Vec<Stmt>, ParserError> {
         let mut statements = Vec::new();
-        
+
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
             statements.push(self.declaration()?);
         }

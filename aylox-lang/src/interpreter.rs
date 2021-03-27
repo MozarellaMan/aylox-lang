@@ -28,13 +28,16 @@ impl Interpreter {
         self.visit_expr(expr)
     }
 
-    fn interpret_block(&mut self, statements: &[Stmt], environment: Environment) -> Result<(), RuntimeError> {
+    fn interpret_block(
+        &mut self,
+        statements: &[Stmt],
+        environment: Environment,
+    ) -> Result<(), RuntimeError> {
         let previous = mem::replace(&mut self.environment, Rc::new(RefCell::new(environment)));
         let result = self.interpret(statements);
         self.environment = previous;
         result
     }
-
 }
 
 impl Default for Interpreter {
@@ -68,7 +71,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_block(&mut self,block: &Block) -> Result<(), RuntimeError> {
+    fn visit_block(&mut self, block: &Block) -> Result<(), RuntimeError> {
         let new_env = Environment::with_enclosing(self.environment.clone());
         self.interpret_block(&block.statements, new_env)
     }
@@ -199,13 +202,17 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
     }
 
     fn visit_variable(&mut self, variable: &Variable) -> Result<LiteralVal, RuntimeError> {
-        let val = self.environment.borrow().get(&variable.name)?.clone();
+        let val = self.environment.borrow().get(&variable.name)?;
         self.interpret_expr(&val)
     }
 
     fn visit_assign(&mut self, assign: &Assign) -> Result<LiteralVal, RuntimeError> {
-        let val = Expr::Literal(Literal { value: self.visit_expr(&assign.value)? });
-        self.environment.borrow_mut().assign(&assign.name, Rc::new(val.clone()))?;
+        let val = Expr::Literal(Literal {
+            value: self.visit_expr(&assign.value)?,
+        });
+        self.environment
+            .borrow_mut()
+            .assign(&assign.name, Rc::new(val.clone()))?;
         self.visit_expr(&val)
     }
 }
