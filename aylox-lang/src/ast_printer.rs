@@ -1,12 +1,12 @@
 use crate::ast::*;
 pub struct AstPrinter;
 impl AstPrinter {
-    pub fn print(&self, expression: &Expr) -> String {
+    pub fn print(&mut self, expression: &Expr) -> String {
         self.visit_expr(expression)
     }
 }
 impl ExprVisitor<String> for AstPrinter {
-    fn visit_binary(&self, binary: &Binary) -> String {
+    fn visit_binary(&mut self, binary: &Binary) -> String {
         parenthesize(
             self,
             &binary.operator.lexeme,
@@ -14,11 +14,11 @@ impl ExprVisitor<String> for AstPrinter {
         )
     }
 
-    fn visit_grouping(&self, grouping: &Grouping) -> String {
+    fn visit_grouping(&mut self, grouping: &Grouping) -> String {
         parenthesize(self, "group", &[&grouping.expression])
     }
 
-    fn visit_literal(&self, literal: &Literal) -> String {
+    fn visit_literal(&mut self, literal: &Literal) -> String {
         match &literal.value {
             LiteralVal::String(val) => val.clone(),
             LiteralVal::Number(val) => val.to_string(),
@@ -27,16 +27,20 @@ impl ExprVisitor<String> for AstPrinter {
         }
     }
 
-    fn visit_unary(&self, unary: &Unary) -> String {
+    fn visit_unary(&mut self, unary: &Unary) -> String {
         parenthesize(self, &unary.operator.lexeme, &[&unary.right])
     }
 
-    fn visit_variable(&self, variable: &Variable) -> String {
+    fn visit_variable(&mut self, variable: &Variable) -> String {
         format!("var {}", variable.name.lexeme)
+    }
+
+    fn visit_assign(&mut self, _assign: &Assign) -> String {
+        todo!()
     }
 }
 
-fn parenthesize(visitor: &AstPrinter, operator: &str, expressions: Expressions) -> String {
+fn parenthesize(visitor: &mut AstPrinter, operator: &str, expressions: Expressions) -> String {
     let mut builder = String::new();
     builder.push('(');
     builder.push_str(operator);

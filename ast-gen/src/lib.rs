@@ -174,16 +174,27 @@ fn generate_types_names(v: &&str, base_name: &str, types: &mut Vec<Type>, names:
     let _type = split[0];
     let name = split[1];
     let type_optional = _type.ends_with('?');
+    let type_many = _type.ends_with('*');
     let type_ident = if type_optional {
         let _type = _type.strip_suffix('?').unwrap();
         Ident::new(_type, _type.span())
-    } else {
+    } else if type_many {
+        let _type = _type.strip_suffix('*').unwrap();
+        Ident::new(_type, _type.span())
+    } 
+    else {
         Ident::new(_type, _type.span())
     };
     let _type = if _type == base_name {
         parse_quote!(Box<#type_ident>)
     } else {
         parse_quote!(#type_ident)
+    };
+
+    let _type = if type_many {
+        parse_quote!(Vec<#type_ident>)
+    } else  {
+        _type
     };
 
     let _type = if type_optional {

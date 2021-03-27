@@ -11,7 +11,7 @@ default-run = "main"
 
 [dependencies]
 clap = "2.33.3"
-rustyline = "7.1.0"
+rustyline = "8.0"
 thiserror = "1.0"
 phf = {version = "0.8.0", features = ["macros"]}
 derive-new = "0.5.8"

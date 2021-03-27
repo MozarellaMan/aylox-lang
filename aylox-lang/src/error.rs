@@ -29,8 +29,10 @@ pub enum RuntimeError {
     InvalidOperand { lexeme: String, expected: String },
     #[error("'{lexeme}' not available for {expression:?}")]
     InvalidOperator { lexeme: String, expression: Expr },
-    #[error("Variable {lexeme} is undefined.")]
+    #[error("Variable '{lexeme}' is undefined")]
     UndefinedVariable { lexeme: String },
+    #[error("Runtime environment does not exist. This is likely an interpreter error.")]
+    EnvironmentError
 }
 
 #[derive(Error, Debug)]

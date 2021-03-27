@@ -1,3 +1,5 @@
+use std::{cell::RefCell, mem, rc::Rc};
+
 use crate::{
     ast::*, ast_printer::AstPrinter, environment::Environment, error::RuntimeError,
     token::TokenType,
@@ -5,13 +7,13 @@ use crate::{
 
 pub struct Interpreter {
     printer: AstPrinter,
-    environment: Environment,
+    environment: Rc<RefCell<Environment>>,
 }
 impl Interpreter {
     pub fn new() -> Self {
         Self {
             printer: AstPrinter,
-            environment: Environment::new(),
+            environment: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
@@ -22,9 +24,17 @@ impl Interpreter {
         Ok(())
     }
 
-    fn interpret_expr(&self, expr: &Expr) -> Result<LiteralVal, RuntimeError> {
+    fn interpret_expr(&mut self, expr: &Expr) -> Result<LiteralVal, RuntimeError> {
         self.visit_expr(expr)
     }
+
+    fn interpret_block(&mut self, statements: &[Stmt], environment: Environment) -> Result<(), RuntimeError> {
+        let previous = mem::replace(&mut self.environment, Rc::new(RefCell::new(environment)));
+        let result = self.interpret(statements);
+        self.environment = previous;
+        result
+    }
+
 }
 
 impl Default for Interpreter {
@@ -51,21 +61,21 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
                 value: LiteralVal::Nil(Nil),
             })))?;
 
-        self.environment.define(
+        self.environment.borrow_mut().define(
             var.name.lexeme.clone(),
-            Box::new(Expr::Literal(Literal { value })),
+            Rc::new(Expr::Literal(Literal { value })),
         );
         Ok(())
+    }
+
+    fn visit_block(&mut self,block: &Block) -> Result<(), RuntimeError> {
+        let new_env = Environment::with_enclosing(self.environment.clone());
+        self.interpret_block(&block.statements, new_env)
     }
 }
 
 impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
-    fn visit_variable(&self, variable: &Variable) -> Result<LiteralVal, RuntimeError> {
-        let val = self.environment.get(&variable.name)?;
-        self.interpret_expr(val)
-    }
-
-    fn visit_binary(&self, binary: &Binary) -> Result<LiteralVal, RuntimeError> {
+    fn visit_binary(&mut self, binary: &Binary) -> Result<LiteralVal, RuntimeError> {
         let left = self.visit_expr(&binary.left)?;
         let right = self.visit_expr(&binary.right)?;
 
@@ -159,15 +169,15 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_grouping(&self, grouping: &Grouping) -> Result<LiteralVal, RuntimeError> {
+    fn visit_grouping(&mut self, grouping: &Grouping) -> Result<LiteralVal, RuntimeError> {
         self.visit_expr(&grouping.expression)
     }
 
-    fn visit_literal(&self, literal: &Literal) -> Result<LiteralVal, RuntimeError> {
+    fn visit_literal(&mut self, literal: &Literal) -> Result<LiteralVal, RuntimeError> {
         Ok(literal.value.clone())
     }
 
-    fn visit_unary(&self, unary: &Unary) -> Result<LiteralVal, RuntimeError> {
+    fn visit_unary(&mut self, unary: &Unary) -> Result<LiteralVal, RuntimeError> {
         let right = self.visit_expr(&unary.right)?;
         match unary.operator._type {
             TokenType::Minus => {
@@ -186,6 +196,17 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 expression: Expr::Unary(unary.clone()),
             }),
         }
+    }
+
+    fn visit_variable(&mut self, variable: &Variable) -> Result<LiteralVal, RuntimeError> {
+        let val = self.environment.borrow().get(&variable.name)?.clone();
+        self.interpret_expr(&val)
+    }
+
+    fn visit_assign(&mut self, assign: &Assign) -> Result<LiteralVal, RuntimeError> {
+        let val = Expr::Literal(Literal { value: self.visit_expr(&assign.value)? });
+        self.environment.borrow_mut().assign(&assign.name, Rc::new(val.clone()))?;
+        self.visit_expr(&val)
     }
 }
 
