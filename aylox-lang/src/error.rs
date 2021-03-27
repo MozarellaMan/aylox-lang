@@ -39,6 +39,8 @@ pub enum RuntimeError {
     },
     #[error("[line {line}] Variable '{lexeme}' is undefined.")]
     UndefinedVariable { lexeme: String, line: usize },
+    #[error("[line {line}] Tried to use nil variable '{lexeme}'")]
+    NilAccess { lexeme: String, line: usize },
     #[error("Runtime environment does not exist. This is likely an interpreter error.")]
     EnvironmentError,
 }
@@ -51,7 +53,7 @@ pub enum AyloxError {
     GenericError(String),
     #[error("Syntax error: {0}")]
     SyntaxError(#[from] SyntaxError),
-    #[error("Parsing error")]
+    #[error("Parsing failed")]
     ParserError(#[from] ParserError),
     #[error("Runtime error: {0}")]
     RuntimeError(#[from] RuntimeError),

@@ -59,15 +59,19 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_var(&mut self, var: &Var) -> Result<(), RuntimeError> {
-        let value =
-            self.interpret_expr(&var.initializer.as_ref().unwrap_or(&Expr::Literal(Literal {
-                value: LiteralVal::Nil(Nil),
-            })))?;
-
-        self.environment.borrow_mut().define(
-            var.name.lexeme.clone(),
-            Rc::new(Expr::Literal(Literal { value })),
-        );
+        let val = var.initializer.as_ref();
+        if let Some(val) = val {
+            let val = self.interpret_expr(val)?;
+            self.environment.borrow_mut().define(
+                var.name.lexeme.clone(),
+                Some(Expr::Literal(Literal {value: val})),
+            );
+        } else {
+            self.environment.borrow_mut().define(
+                var.name.lexeme.clone(),
+                None,
+            );
+        }
         Ok(())
     }
 
@@ -214,6 +218,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
 
     fn visit_variable(&mut self, variable: &Variable) -> Result<LiteralVal, RuntimeError> {
         let val = self.environment.borrow().get(&variable.name)?;
+        let val = val.as_ref().as_ref().unwrap();
         self.interpret_expr(&val)
     }
 
@@ -223,7 +228,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
         });
         self.environment
             .borrow_mut()
-            .assign(&assign.name, Rc::new(val.clone()))?;
+            .assign(&assign.name, Some(val.clone()))?;
         self.visit_expr(&val)
     }
 }

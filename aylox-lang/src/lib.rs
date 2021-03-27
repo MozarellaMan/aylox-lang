@@ -31,7 +31,7 @@ pub fn run(contents: &str) -> Result<(), AyloxError> {
     let mut interpreter = Interpreter::new();
 
     if let Err(err) = interpreter.interpret(&statements) {
-        println!("{}", err);
+        println!("Runtime Error: {}", err);
     }
     Ok(())
 }
