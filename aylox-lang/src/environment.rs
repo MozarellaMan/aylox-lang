@@ -35,6 +35,7 @@ impl Environment {
             }
             Err(RuntimeError::UndefinedVariable {
                 lexeme: name.lexeme.clone(),
+                line: name.line,
             })
         }
     }
@@ -46,6 +47,7 @@ impl Environment {
                 .cloned()
                 .ok_or(RuntimeError::UndefinedVariable {
                     lexeme: name.lexeme.clone(),
+                    line: name.line
                 });
 
         match result {

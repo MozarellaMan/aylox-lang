@@ -90,6 +90,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -100,6 +101,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -110,6 +112,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -121,6 +124,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 _ => Err(RuntimeError::InvalidOperand {
                     lexeme: binary.operator.lexeme.clone(),
                     expected: "Numbers OR Strings".to_string(),
+                    line: binary.operator.line,
                 }),
             },
             TokenType::Greater => {
@@ -130,6 +134,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -140,6 +145,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -150,6 +156,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -160,6 +167,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
+                        line: binary.operator.line,
                     })
                 }
             }
@@ -168,6 +176,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: binary.operator.lexeme.clone(),
                 expression: Expr::Binary(binary.clone()),
+                line: binary.operator.line,
             }),
         }
     }
@@ -190,6 +199,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: unary.operator.lexeme.clone(),
                         expected: "number".to_string(),
+                        line: unary.operator.line,
                     })
                 }
             }
@@ -197,6 +207,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: unary.operator.lexeme.clone(),
                 expression: Expr::Unary(unary.clone()),
+                line: unary.operator.line,
             }),
         }
     }

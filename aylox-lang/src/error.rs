@@ -6,31 +6,31 @@ use crate::ast::Expr;
 pub enum ParserError {
     #[error("Parsing Failed.")]
     Generic,
-    #[error("At line {line}, found '{lexeme}'. {msg}")]
+    #[error("[line {line}], found '{lexeme}'. {msg}")]
     UnexpectedToken {
         line: usize,
         lexeme: String,
         msg: String,
     },
-    #[error("{line} at end. {msg}")]
+    #[error("[line {line}] at end of line: {msg}.")]
     UnexpectedEof { line: usize, msg: String },
 }
 
 #[derive(Error, Debug)]
 pub enum SyntaxError {
-    #[error("Unexpected token at line {line}, found '{found}'")]
+    #[error("[line {line}] Unexpected token, found '{found}'.")]
     UnexpectedToken { line: usize, found: String },
-    #[error("Unterminated string.")]
-    UnterminatedString,
+    #[error("[line {line}] Unterminated string.")]
+    UnterminatedString { line: usize},
 }
 #[derive(Error, Debug)]
 pub enum RuntimeError {
-    #[error("'{lexeme}' operands must be {expected}")]
-    InvalidOperand { lexeme: String, expected: String },
-    #[error("'{lexeme}' not available for {expression:?}")]
-    InvalidOperator { lexeme: String, expression: Expr },
-    #[error("Variable '{lexeme}' is undefined")]
-    UndefinedVariable { lexeme: String },
+    #[error("[line {line}] '{lexeme}' operands must be {expected}.")]
+    InvalidOperand { lexeme: String, expected: String, line: usize },
+    #[error("[line {line}] '{lexeme}' not available for {expression:?}.")]
+    InvalidOperator { lexeme: String, expression: Expr, line: usize },
+    #[error("[line {line}] Variable '{lexeme}' is undefined.")]
+    UndefinedVariable { lexeme: String, line: usize },
     #[error("Runtime environment does not exist. This is likely an interpreter error.")]
     EnvironmentError,
 }
@@ -43,7 +43,7 @@ pub enum AyloxError {
     GenericError(String),
     #[error("Syntax error: {0}")]
     SyntaxError(#[from] SyntaxError),
-    #[error("Parser error: {0}")]
+    #[error("Parsing error")]
     ParserError(#[from] ParserError),
     #[error("Runtime error: {0}")]
     RuntimeError(#[from] RuntimeError),

@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
             statements.push(self.declaration()?);
         }
 
-        self.consume(&TokenType::RightBrace, "Exptect '}' after block.")?;
+        self.consume(&TokenType::RightBrace, "Expected '}' after block.")?;
         Ok(statements)
     }
 
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
         let name = self
             .consume(
                 &TokenType::Identifier(String::new()),
-                "Expect variable name",
+                "Expected variable name",
             )?
             .clone();
         let mut initializer: Option<Expr> = None;
@@ -98,20 +98,20 @@ impl<'a> Parser<'a> {
 
         self.consume(
             &TokenType::Semicolon,
-            "Expect ';' after variable declaration.",
+            "Expected ';' after variable declaration.",
         )?;
         Ok(Stmt::new_var(Var::new(name, initializer)))
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let value = self.expression()?;
-        self.consume(&TokenType::Semicolon, "Expect ';' after value.")?;
+        self.consume(&TokenType::Semicolon, "Expected ';' after value.")?;
         Ok(Stmt::Print(Print::new(value)))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
-        self.consume(&TokenType::Semicolon, "Expect ';' after expression.")?;
+        self.consume(&TokenType::Semicolon, "Expected ';' after expression.")?;
         Ok(Stmt::Expression(Expression::new(expr)))
     }
 
@@ -251,10 +251,10 @@ impl<'a> Parser<'a> {
 
         if self.token_match(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
-            self.consume(&TokenType::RightParen, "Expect ')' after expression.")?;
+            self.consume(&TokenType::RightParen, "Expected ')' after expression.")?;
             return Ok(Expr::Grouping(Grouping::new(Box::new(expr))));
         }
-        Err(Parser::error(self.peek(), "Expect expression"))
+        Err(Parser::error(self.peek(), "Expected expression"))
     }
 
     fn consume(&mut self, _type: &TokenType, msg: &str) -> Result<&Token, ParserError> {
