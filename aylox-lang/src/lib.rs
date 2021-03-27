@@ -36,6 +36,22 @@ pub fn run(contents: &str) -> Result<(), AyloxError> {
     Ok(())
 }
 
+pub fn repl(contents: &str) -> Result<(), AyloxError> {
+    let contents = if contents.starts_with("print ") && !contents.ends_with(';') {
+        let mut fixed = String::from(contents);
+        fixed.push(';');
+        fixed
+    } else if !contents.ends_with(';') {
+        let mut fixed = String::from(contents);
+        fixed = format!("print {}", fixed);
+        fixed.push(';');
+        fixed
+    } else {
+        String::from(contents)
+    };
+    run(&contents)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

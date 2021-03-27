@@ -64,13 +64,12 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             let val = self.interpret_expr(val)?;
             self.environment.borrow_mut().define(
                 var.name.lexeme.clone(),
-                Some(Expr::Literal(Literal {value: val})),
+                Some(Expr::Literal(Literal { value: val })),
             );
         } else {
-            self.environment.borrow_mut().define(
-                var.name.lexeme.clone(),
-                None,
-            );
+            self.environment
+                .borrow_mut()
+                .define(var.name.lexeme.clone(), None);
         }
         Ok(())
     }

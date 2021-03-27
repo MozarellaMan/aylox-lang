@@ -1,6 +1,6 @@
 use rustyline::{error::ReadlineError, Editor};
 
-use crate::run;
+use crate::repl;
 
 pub fn run_prompt() {
     let mut rl = Editor::<()>::new();
@@ -9,7 +9,7 @@ pub fn run_prompt() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                if let Err(err) = run(&line) {
+                if let Err(err) = repl(&line) {
                     println!("{}", err)
                 }
             }
