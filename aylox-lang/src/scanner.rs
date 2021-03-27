@@ -161,9 +161,7 @@ impl<'a> Scanner<'a> {
         if self.is_at_end() {
             println!(
                 "{}",
-                AyloxError::SyntaxError(SyntaxError::UnterminatedString {
-                    line: self.line
-                })
+                AyloxError::SyntaxError(SyntaxError::UnterminatedString { line: self.line })
             );
             return;
         }

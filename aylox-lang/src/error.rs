@@ -21,14 +21,22 @@ pub enum SyntaxError {
     #[error("[line {line}] Unexpected token, found '{found}'.")]
     UnexpectedToken { line: usize, found: String },
     #[error("[line {line}] Unterminated string.")]
-    UnterminatedString { line: usize},
+    UnterminatedString { line: usize },
 }
 #[derive(Error, Debug)]
 pub enum RuntimeError {
     #[error("[line {line}] '{lexeme}' operands must be {expected}.")]
-    InvalidOperand { lexeme: String, expected: String, line: usize },
+    InvalidOperand {
+        lexeme: String,
+        expected: String,
+        line: usize,
+    },
     #[error("[line {line}] '{lexeme}' not available for {expression:?}.")]
-    InvalidOperator { lexeme: String, expression: Expr, line: usize },
+    InvalidOperator {
+        lexeme: String,
+        expression: Expr,
+        line: usize,
+    },
     #[error("[line {line}] Variable '{lexeme}' is undefined.")]
     UndefinedVariable { lexeme: String, line: usize },
     #[error("Runtime environment does not exist. This is likely an interpreter error.")]
