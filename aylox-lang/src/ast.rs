@@ -19,6 +19,7 @@ ast_gen!(
     "~Stmt",
     [
         "Expression : Expr expression",
+        "If_     : Expr condition, Stmt then_branch, Stmt else_branch",
         "Print      : Expr expression",
         "Var        : Token name, Expr? initializer",
         "Block      : Stmt* statements",

@@ -1,5 +1,5 @@
 {
     "editor.formatOnSave": true,
     "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+    "editor.formatOnType": true,
 }

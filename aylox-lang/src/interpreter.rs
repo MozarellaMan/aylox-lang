@@ -78,6 +78,10 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         let new_env = Environment::with_enclosing(self.environment.clone());
         self.interpret_block(&block.statements, new_env)
     }
+
+    fn visit_if_(&mut self, if_: &If_)->Result<(), RuntimeError> {
+        todo!()
+    }
 }
 
 impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {

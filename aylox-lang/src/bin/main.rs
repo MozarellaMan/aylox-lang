@@ -24,7 +24,7 @@ fn main() {
     if let Some(filepath) = matches.value_of("script") {
         //println!("Script-\n{}", file)
         if let Err(err) = run_file(filepath) {
-            println!("Can't open file: {}", err)
+            println!("Can't open file: {}", err);
         }
     } else {
         run_prompt()
