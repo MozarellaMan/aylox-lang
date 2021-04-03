@@ -88,6 +88,13 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         }
         Err(RuntimeError::ControlFlowError)
     }
+
+    fn visit_while_(&mut self, while_: &While_) -> Result<(), RuntimeError> {
+        while is_truthy(&self.visit_expr(&while_.condition)?) {
+            self.visit_stmt(&while_.body)?;
+        }
+        Ok(())
+    }
 }
 
 impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
@@ -248,10 +255,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             if is_truthy(&left) {
                 return Ok(left);
             }
-        } else {
-            if !is_truthy(&left) {
-                return Ok(left);
-            }
+        } else if !is_truthy(&left) {
+            return Ok(left);
         }
 
         self.visit_expr(&logical.right)

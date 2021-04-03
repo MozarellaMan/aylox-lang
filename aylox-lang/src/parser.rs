@@ -76,14 +76,80 @@ impl<'a> Parser<'a> {
         if self.token_match(&[TokenType::LeftBrace]) {
             return Ok(Stmt::new_block(Block::new(self.block_statement()?)));
         }
+        if self.token_match(&[TokenType::While]) {
+            return self.while_statement();
+        }
+        if self.token_match(&[TokenType::For]) {
+            return self.for_statement();
+        }
 
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> ParseStmtResult {
+        self.consume(&TokenType::LeftParen, "Expected '(' after 'for'")?;
+        let initializer = if self.token_match(&[TokenType::Semicolon]) {
+            None
+        } else if self.token_match(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition = if !self.check(&TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(&TokenType::Semicolon, "Expected ';' after loop condition.")?;
+
+        let increment = if !self.check(&TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(&TokenType::RightParen, "Expected ')' after 'for' clauses")?;
+
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            let increment_expression = Stmt::Expression(Expression::new(increment));
+            body = Stmt::Block(Block::new(vec![body, increment_expression]));
+        }
+
+        let condition = if let Some(condition) = condition {
+            condition
+        } else {
+            Expr::Literal(Literal::new(LiteralVal::Bool(true)))
+        };
+
+        body = Stmt::While_(While_::new(condition, Box::new(body)));
+
+        if let Some(initializer) = initializer {
+            body = Stmt::Block(Block::new(vec![initializer, body]));
+        }
+
+        Ok(body)
+    }
+
+    fn while_statement(&mut self) -> ParseStmtResult {
+        self.consume(&TokenType::LeftParen, "Expected '(' after 'while'")?;
+        let condition = self.expression()?;
+        self.consume(
+            &TokenType::RightParen,
+            "Expected ')' after 'while' condition",
+        )?;
+        let body = self.statement()?;
+
+        Ok(Stmt::While_(While_::new(condition, Box::new(body))))
     }
 
     fn if_statement(&mut self) -> ParseStmtResult {
         self.consume(&TokenType::LeftParen, "Expected '(' after 'if'")?;
         let condition = self.expression()?;
-        self.consume(&TokenType::RightParen, "Expected ')' after if condition")?;
+        self.consume(&TokenType::RightParen, "Expected ')' after 'if' condition")?;
         let then_branch = self.statement()?;
         let else_branch = if self.token_match(&[TokenType::Else]) {
             Some(Box::new(self.statement()?))
