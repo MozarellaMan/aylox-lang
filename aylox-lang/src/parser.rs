@@ -6,6 +6,10 @@ use crate::{
     token::{Token, TokenType},
 };
 
+type ParseExprResult = Result<Expr, ParserError>;
+type ParseStmtResult = Result<Stmt, ParserError>;
+type ParseStmtsResult = Result<Vec<Stmt>, ParserError>;
+
 pub struct Parser<'a> {
     tokens: &'a [Token],
     current: usize,
@@ -16,7 +20,7 @@ impl<'a> Parser<'a> {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn parse(&mut self) -> ParseStmtsResult {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.declaration()?)
@@ -45,7 +49,7 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.current).expect("no token found")
     }
 
-    fn declaration(&mut self) -> Result<Stmt, ParserError> {
+    fn declaration(&mut self) -> ParseStmtResult {
         if self.token_match(&[TokenType::Var]) {
             if let Ok(stmt) = self.var_declaration() {
                 return Ok(stmt);
@@ -62,17 +66,39 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn statement(&mut self) -> Result<Stmt, ParserError> {
+    fn statement(&mut self) -> ParseStmtResult {
+        if self.token_match(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.token_match(&[TokenType::Print]) {
             return self.print_statement();
-        } else if self.token_match(&[TokenType::LeftBrace]) {
+        }
+        if self.token_match(&[TokenType::LeftBrace]) {
             return Ok(Stmt::new_block(Block::new(self.block_statement()?)));
         }
 
         self.expression_statement()
     }
 
-    fn block_statement(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    fn if_statement(&mut self) -> ParseStmtResult {
+        self.consume(&TokenType::LeftParen, "Expected '(' after 'if'")?;
+        let condition = self.expression()?;
+        self.consume(&TokenType::RightParen, "Expected ')' after if condition")?;
+        let then_branch = self.statement()?;
+        let else_branch = if self.token_match(&[TokenType::Else]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt::new_if_(If_::new(
+            condition,
+            Box::new(then_branch),
+            else_branch,
+        )))
+    }
+
+    fn block_statement(&mut self) -> ParseStmtsResult {
         let mut statements = Vec::new();
 
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
@@ -83,7 +109,7 @@ impl<'a> Parser<'a> {
         Ok(statements)
     }
 
-    fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
+    fn var_declaration(&mut self) -> ParseStmtResult {
         let name = self
             .consume(
                 &TokenType::Identifier(String::new()),
@@ -103,24 +129,24 @@ impl<'a> Parser<'a> {
         Ok(Stmt::new_var(Var::new(name, initializer)))
     }
 
-    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn print_statement(&mut self) -> ParseStmtResult {
         let value = self.expression()?;
         self.consume(&TokenType::Semicolon, "Expected ';' after value.")?;
         Ok(Stmt::Print(Print::new(value)))
     }
 
-    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+    fn expression_statement(&mut self) -> ParseStmtResult {
         let expr = self.expression()?;
         self.consume(&TokenType::Semicolon, "Expected ';' after expression.")?;
         Ok(Stmt::Expression(Expression::new(expr)))
     }
 
-    fn expression(&mut self) -> Result<Expr, ParserError> {
+    fn expression(&mut self) -> ParseExprResult {
         self.assignment()
     }
 
-    fn assignment(&mut self) -> Result<Expr, ParserError> {
-        let expr = self.equality()?;
+    fn assignment(&mut self) -> ParseExprResult {
+        let expr = self.or()?;
 
         if self.token_match(&[TokenType::Equal]) {
             let equals = self.previous().clone();
@@ -140,7 +166,31 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Expr, ParserError> {
+    fn or(&mut self) -> ParseExprResult {
+        let mut expr = self.and()?;
+
+        while self.token_match(&[TokenType::Or]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            expr = Expr::new_logical(Logical::new(Box::new(expr), operator, Box::new(right)))
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> ParseExprResult {
+        let mut expr = self.equality()?;
+
+        while self.token_match(&[TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            expr = Expr::new_logical(Logical::new(Box::new(expr), operator, Box::new(right)))
+        }
+
+        Ok(expr)
+    }
+
+    fn equality(&mut self) -> ParseExprResult {
         let mut expr = self.comparison()?;
 
         while self.token_match(&[TokenType::BangEqual, TokenType::EqualEqual]) {
@@ -168,7 +218,7 @@ impl<'a> Parser<'a> {
         mem::discriminant(&self.peek()._type) == mem::discriminant(_type)
     }
 
-    fn comparison(&mut self) -> Result<Expr, ParserError> {
+    fn comparison(&mut self) -> ParseExprResult {
         let mut expr = self.term()?;
 
         while self.token_match(&[
@@ -185,7 +235,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Expr, ParserError> {
+    fn term(&mut self) -> ParseExprResult {
         let mut expr = self.factor()?;
 
         while self.token_match(&[TokenType::Minus, TokenType::Plus]) {
@@ -197,7 +247,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Expr, ParserError> {
+    fn factor(&mut self) -> ParseExprResult {
         let mut expr = self.unary()?;
 
         while self.token_match(&[TokenType::Slash, TokenType::Star]) {
@@ -208,7 +258,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, ParserError> {
+    fn unary(&mut self) -> ParseExprResult {
         if self.token_match(&[TokenType::Bang, TokenType::Minus]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
@@ -217,7 +267,7 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
-    fn primary(&mut self) -> Result<Expr, ParserError> {
+    fn primary(&mut self) -> ParseExprResult {
         if self.token_match(&[TokenType::False]) {
             return Ok(Expr::Literal(Literal::new(LiteralVal::Bool(false))));
         }

@@ -38,6 +38,10 @@ impl ExprVisitor<String> for AstPrinter {
     fn visit_assign(&mut self, _assign: &Assign) -> String {
         todo!()
     }
+
+    fn visit_logical(&mut self, _logical: &Logical) -> String {
+        todo!()
+    }
 }
 
 fn parenthesize(visitor: &mut AstPrinter, operator: &str, expressions: Expressions) -> String {

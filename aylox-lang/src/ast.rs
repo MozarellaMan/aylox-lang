@@ -6,12 +6,13 @@ ast_gen!(
     [
         "Nil",
         "LiteralVal / String String, f64 Number, Nil Nil, bool Bool",
-        "Assign   : Token name, Expr value",
+        "Assign     : Token name, Expr value",
         "Binary     : Expr left, Token operator, Expr right",
         "Grouping   : Expr expression",
         "Literal    : LiteralVal value",
+        "Logical    : Expr left, Token operator, Expr right",
         "Unary      : Token operator, Expr right",
-        "Variable : Token name"
+        "Variable   : Token name"
     ]
 );
 
@@ -19,7 +20,7 @@ ast_gen!(
     "~Stmt",
     [
         "Expression : Expr expression",
-        "If_     : Expr condition, Stmt then_branch, Stmt else_branch",
+        "If_        : Expr condition, Stmt then_branch, Stmt? else_branch",
         "Print      : Expr expression",
         "Var        : Token name, Expr? initializer",
         "Block      : Stmt* statements",

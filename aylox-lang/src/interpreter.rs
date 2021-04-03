@@ -79,8 +79,14 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         self.interpret_block(&block.statements, new_env)
     }
 
-    fn visit_if_(&mut self, if_: &If_)->Result<(), RuntimeError> {
-        todo!()
+    fn visit_if_(&mut self, if_: &If_) -> Result<(), RuntimeError> {
+        if is_truthy(&self.visit_expr(&if_.condition)?) {
+            self.visit_stmt(&if_.then_branch)?;
+        }
+        if let Some(else_branch) = &if_.else_branch {
+            self.visit_stmt(else_branch)?;
+        }
+        Err(RuntimeError::ControlFlowError)
     }
 }
 
@@ -210,7 +216,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::Bang => Ok(LiteralVal::Bool(!is_truthy(right))),
+            TokenType::Bang => Ok(LiteralVal::Bool(!is_truthy(&right))),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: unary.operator.lexeme.clone(),
                 expression: Expr::Unary(unary.clone()),
@@ -234,12 +240,28 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
             .assign(&assign.name, Some(val.clone()))?;
         self.visit_expr(&val)
     }
+
+    fn visit_logical(&mut self, logical: &Logical) -> Result<LiteralVal, RuntimeError> {
+        let left = self.visit_expr(&logical.left)?;
+
+        if logical.operator._type == TokenType::Or {
+            if is_truthy(&left) {
+                return Ok(left);
+            }
+        } else {
+            if !is_truthy(&left) {
+                return Ok(left);
+            }
+        }
+
+        self.visit_expr(&logical.right)
+    }
 }
 
-fn is_truthy(literal: LiteralVal) -> bool {
+fn is_truthy(literal: &LiteralVal) -> bool {
     match literal {
         LiteralVal::Nil(_) => false,
-        LiteralVal::Bool(boolean) => boolean,
+        LiteralVal::Bool(boolean) => *boolean,
         _ => true,
     }
 }

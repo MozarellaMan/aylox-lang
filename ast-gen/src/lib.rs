@@ -171,15 +171,15 @@ fn define_enum_type(base_name: &str, enum_name: &str, variants: &str) -> TokenSt
 
 fn generate_types_names(v: &&str, base_name: &str, types: &mut Vec<Type>, names: &mut Vec<Ident>) {
     let split = v.split(' ').map(|s| s.trim()).collect::<Vec<_>>();
-    let _type = split[0];
+    let mut _type = split[0];
     let name = split[1];
     let type_optional = _type.ends_with('?');
     let type_many = _type.ends_with('*');
     let type_ident = if type_optional {
-        let _type = _type.strip_suffix('?').unwrap();
+        _type = _type.strip_suffix('?').unwrap();
         Ident::new(_type, _type.span())
     } else if type_many {
-        let _type = _type.strip_suffix('*').unwrap();
+        _type = _type.strip_suffix('*').unwrap();
         Ident::new(_type, _type.span())
     } else {
         Ident::new(_type, _type.span())

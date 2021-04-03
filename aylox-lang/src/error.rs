@@ -43,6 +43,8 @@ pub enum RuntimeError {
     NilAccess { lexeme: String, line: usize },
     #[error("Runtime environment does not exist. This is likely an interpreter error.")]
     EnvironmentError,
+    #[error("Could not find an execution branch. This is likely an interpreter error.")]
+    ControlFlowError,
 }
 
 #[derive(Error, Debug)]
