@@ -159,9 +159,15 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 (Value::String(x), Value::String(y)) => {
                     Ok(AloxObject::Value(Value::String(format!("{}{}", x, y))))
                 }
+                (Value::String(x), Value::Number(y)) => {
+                    Ok(AloxObject::Value(Value::String(format!("{}{}", x, y))))
+                }
+                (Value::Number(x), Value::String(y)) => {
+                    Ok(AloxObject::Value(Value::String(format!("{}{}", x, y))))
+                }
                 _ => Err(RuntimeError::InvalidOperand {
                     lexeme: binary.operator.lexeme.clone(),
-                    expected: "Numbers OR Strings".to_string(),
+                    expected: "Numbers, Strings".to_string(),
                     line: binary.operator.line,
                 }),
             },

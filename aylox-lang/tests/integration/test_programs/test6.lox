@@ -3,4 +3,4 @@ fun sayHi(first, last) {
 }
 
 sayHi("Dear", "Reader");
-print clock();
+print "current time: " + clock();
