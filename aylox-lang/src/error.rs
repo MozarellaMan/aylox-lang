@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 use crate::ast::Expr;
+// TODO Newtype for lines in code
 
 #[derive(Error, Debug)]
 pub enum ParserError {
@@ -14,6 +15,10 @@ pub enum ParserError {
     },
     #[error("[line {line}] at end of line: {msg}.")]
     UnexpectedEof { line: usize, msg: String },
+    #[error("[line {line}] Function cannot have more than 255 arguments.")]
+    FunctionArgumentLength { line: usize },
+    #[error("[line {line}] Function cannot have more than 255 parameters.")]
+    FunctionParameterLength { line: usize },
 }
 
 #[derive(Error, Debug)]
@@ -45,6 +50,13 @@ pub enum RuntimeError {
     EnvironmentError,
     #[error("Could not find an execution branch. This is likely an interpreter error.")]
     ControlFlowError,
+    #[error("[line {line:?}] Expected a value here (bool, nil, string or number) at {lexeme:?}")]
+    ValueMissing {
+        line: Option<usize>,
+        lexeme: Option<String>,
+    },
+    #[error("[line {line}] Expected a function at '{lexeme}")]
+    ExpectedFunction { lexeme: String, line: usize },
 }
 
 #[derive(Error, Debug)]

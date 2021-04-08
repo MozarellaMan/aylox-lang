@@ -82,8 +82,54 @@ impl<'a> Parser<'a> {
         if self.token_match(&[TokenType::For]) {
             return self.for_statement();
         }
+        if self.token_match(&[TokenType::Fun]) {
+            return self.function(FunctionKind::Function);
+        }
 
         self.expression_statement()
+    }
+
+    fn function(&mut self, kind: FunctionKind) -> ParseStmtResult {
+        let name = self
+            .consume(
+                &TokenType::Identifier(String::new()),
+                &format!("Expected {} name", kind),
+            )?
+            .clone();
+        self.consume(
+            &TokenType::LeftParen,
+            &format!("Expected '(' after {} name", kind),
+        )?;
+        let mut parameters: Vec<Token> = vec![];
+
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    let err = ParserError::FunctionParameterLength {
+                        line: self.previous().line,
+                    };
+                    println!("{}", err);
+                }
+                parameters.push(
+                    self.consume(
+                        &TokenType::Identifier(String::new()),
+                        "Expected parameter name",
+                    )?
+                    .clone(),
+                );
+                if !self.token_match(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(&TokenType::RightParen, "Expected ')' after parameters")?;
+
+        self.consume(
+            &TokenType::LeftBrace,
+            &format!("Expected '{{' before {} body", kind),
+        )?;
+        let body = self.block_statement()?;
+        Ok(Stmt::Function(Function::new(name, parameters, body)))
     }
 
     fn for_statement(&mut self) -> ParseStmtResult {
@@ -122,7 +168,7 @@ impl<'a> Parser<'a> {
         let condition = if let Some(condition) = condition {
             condition
         } else {
-            Expr::Literal(Literal::new(LiteralVal::Bool(true)))
+            Expr::Literal(Literal::new(Value::Bool(true)))
         };
 
         body = Stmt::While_(While_::new(condition, Box::new(body)));
@@ -330,18 +376,56 @@ impl<'a> Parser<'a> {
             let right = self.unary()?;
             return Ok(Expr::Unary(Unary::new(operator, Box::new(right))));
         }
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> ParseExprResult {
+        let mut expr = self.primary()?;
+
+        loop {
+            if !self.token_match(&[TokenType::LeftParen]) {
+                break;
+            }
+            expr = self.finish_call(expr)?;
+        }
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> ParseExprResult {
+        let mut arguments = vec![];
+        if !self.check(&TokenType::LeftParen) {
+            loop {
+                if arguments.len() >= 255 {
+                    let err = ParserError::FunctionArgumentLength {
+                        line: self.previous().line,
+                    };
+                    println!("{}", err);
+                }
+                arguments.push(self.expression()?);
+                if !self.token_match(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        let paren = self.consume(&TokenType::RightParen, "Expected ')' after arguments.")?;
+
+        Ok(Expr::Call(Call::new(
+            Box::new(callee),
+            paren.clone(),
+            arguments,
+        )))
     }
 
     fn primary(&mut self) -> ParseExprResult {
         if self.token_match(&[TokenType::False]) {
-            return Ok(Expr::Literal(Literal::new(LiteralVal::Bool(false))));
+            return Ok(Expr::Literal(Literal::new(Value::Bool(false))));
         }
         if self.token_match(&[TokenType::True]) {
-            return Ok(Expr::Literal(Literal::new(LiteralVal::Bool(true))));
+            return Ok(Expr::Literal(Literal::new(Value::Bool(true))));
         }
         if self.token_match(&[TokenType::Nil]) {
-            return Ok(Expr::Literal(Literal::new(LiteralVal::Nil(Nil))));
+            return Ok(Expr::Literal(Literal::new(Value::Nil(Nil))));
         }
 
         if self.token_match(&[
@@ -351,12 +435,10 @@ impl<'a> Parser<'a> {
         ]) {
             match &self.previous()._type {
                 TokenType::Number(num) => {
-                    return Ok(Expr::Literal(Literal::new(LiteralVal::Number(*num))))
+                    return Ok(Expr::Literal(Literal::new(Value::Number(*num))))
                 }
                 TokenType::String(string) => {
-                    return Ok(Expr::Literal(Literal::new(LiteralVal::String(
-                        string.clone(),
-                    ))))
+                    return Ok(Expr::Literal(Literal::new(Value::String(string.clone()))))
                 }
                 TokenType::Identifier(_) => {
                     return Ok(Expr::Variable(Variable::new(self.previous().clone())))
@@ -370,7 +452,7 @@ impl<'a> Parser<'a> {
             self.consume(&TokenType::RightParen, "Expected ')' after expression.")?;
             return Ok(Expr::Grouping(Grouping::new(Box::new(expr))));
         }
-        Err(Parser::error(self.peek(), "Expected expression"))
+        Err(Parser::error(self.peek(), "Expected expression."))
     }
 
     fn consume(&mut self, _type: &TokenType, msg: &str) -> Result<&Token, ParserError> {

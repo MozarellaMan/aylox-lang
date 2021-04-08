@@ -2,18 +2,22 @@ use std::{cell::RefCell, mem, rc::Rc};
 
 use crate::{
     ast::*, ast_printer::AstPrinter, environment::Environment, error::RuntimeError,
-    token::TokenType,
+    functions::AloxFunction, native_functions::Clock, token::TokenType,
 };
 
 pub struct Interpreter {
     printer: AstPrinter,
-    environment: Rc<RefCell<Environment>>,
+    pub environment: Rc<RefCell<Environment>>,
+    pub globals: Rc<RefCell<Environment>>,
 }
 impl Interpreter {
     pub fn new() -> Self {
+        let mut globals = Environment::new();
+        globals.define("clock", Some(AloxObject::Function(Rc::new(Clock))));
         Self {
             printer: AstPrinter,
             environment: Rc::new(RefCell::new(Environment::new())),
+            globals: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
@@ -24,11 +28,11 @@ impl Interpreter {
         Ok(())
     }
 
-    fn interpret_expr(&mut self, expr: &Expr) -> Result<LiteralVal, RuntimeError> {
+    fn interpret_expr(&mut self, expr: &Expr) -> AloxObjResult {
         self.visit_expr(expr)
     }
 
-    fn interpret_block(
+    pub fn interpret_block(
         &mut self,
         statements: &[Stmt],
         environment: Environment,
@@ -53,7 +57,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_print(&mut self, print: &Print) -> Result<(), RuntimeError> {
-        let value = self.interpret_expr(&print.expression)?;
+        let value = self.interpret_expr(&print.expression)?.to_value()?;
         println!("{}", self.printer.print(&Expr::Literal(Literal { value })));
         Ok(())
     }
@@ -61,15 +65,14 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     fn visit_var(&mut self, var: &Var) -> Result<(), RuntimeError> {
         let val = var.initializer.as_ref();
         if let Some(val) = val {
-            let val = self.interpret_expr(val)?;
-            self.environment.borrow_mut().define(
-                var.name.lexeme.clone(),
-                Some(Expr::Literal(Literal { value: val })),
-            );
-        } else {
+            let val = self
+                .interpret_expr(val)?
+                .to_value_with_info(var.name.line, &var.name.lexeme)?;
             self.environment
                 .borrow_mut()
-                .define(var.name.lexeme.clone(), None);
+                .define(&var.name.lexeme, Some(AloxObject::Value(val)));
+        } else {
+            self.environment.borrow_mut().define(&var.name.lexeme, None);
         }
         Ok(())
     }
@@ -80,7 +83,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_if_(&mut self, if_: &If_) -> Result<(), RuntimeError> {
-        if is_truthy(&self.visit_expr(&if_.condition)?) {
+        if is_truthy(&self.visit_expr(&if_.condition)?.to_value()?) {
             self.visit_stmt(&if_.then_branch)?;
         }
         if let Some(else_branch) = &if_.else_branch {
@@ -90,22 +93,35 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_while_(&mut self, while_: &While_) -> Result<(), RuntimeError> {
-        while is_truthy(&self.visit_expr(&while_.condition)?) {
+        while is_truthy(&self.visit_expr(&while_.condition)?.to_value()?) {
             self.visit_stmt(&while_.body)?;
         }
         Ok(())
     }
+
+    fn visit_function(&mut self, function: &Function) -> Result<(), RuntimeError> {
+        let alox_function = AloxFunction::new(function.clone());
+        self.environment.borrow_mut().define(
+            &function.name.lexeme,
+            Some(AloxObject::Function(Rc::new(alox_function))),
+        );
+        Ok(())
+    }
 }
 
-impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
-    fn visit_binary(&mut self, binary: &Binary) -> Result<LiteralVal, RuntimeError> {
-        let left = self.visit_expr(&binary.left)?;
-        let right = self.visit_expr(&binary.right)?;
+impl ExprVisitor<AloxObjResult> for Interpreter {
+    fn visit_binary(&mut self, binary: &Binary) -> AloxObjResult {
+        let left = self
+            .visit_expr(&binary.left)?
+            .to_value_with_info(binary.operator.line, &binary.operator.lexeme)?;
+        let right = self
+            .visit_expr(&binary.right)?
+            .to_value_with_info(binary.operator.line, &binary.operator.lexeme)?;
 
         match binary.operator._type {
             TokenType::Minus => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Number(x - y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Number(x - y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -115,8 +131,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Slash => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Number(x / y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Number(x / y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -126,8 +142,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Star => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Number(x * y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Number(x * y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -137,9 +153,9 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Plus => match (left, right) {
-                (LiteralVal::Number(x), LiteralVal::Number(y)) => Ok(LiteralVal::Number(x + y)),
-                (LiteralVal::String(x), LiteralVal::String(y)) => {
-                    Ok(LiteralVal::String(format!("{}{}", x, y)))
+                (Value::Number(x), Value::Number(y)) => Ok(AloxObject::Value(Value::Number(x + y))),
+                (Value::String(x), Value::String(y)) => {
+                    Ok(AloxObject::Value(Value::String(format!("{}{}", x, y))))
                 }
                 _ => Err(RuntimeError::InvalidOperand {
                     lexeme: binary.operator.lexeme.clone(),
@@ -148,8 +164,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }),
             },
             TokenType::Greater => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Bool(x > y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Bool(x > y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -159,8 +175,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::GreaterEqual => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Bool(x >= y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Bool(x >= y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -170,8 +186,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::Less => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Bool(x < y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Bool(x < y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -181,8 +197,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                 }
             }
             TokenType::LessEqual => {
-                if let (LiteralVal::Number(x), LiteralVal::Number(y)) = (left, right) {
-                    Ok(LiteralVal::Bool(x <= y))
+                if let (Value::Number(x), Value::Number(y)) = (left, right) {
+                    Ok(AloxObject::Value(Value::Bool(x <= y)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
@@ -191,8 +207,8 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::BangEqual => Ok(LiteralVal::Bool(left != right)),
-            TokenType::EqualEqual => Ok(LiteralVal::Bool(left == right)),
+            TokenType::BangEqual => Ok(AloxObject::Value(Value::Bool(left != right))),
+            TokenType::EqualEqual => Ok(AloxObject::Value(Value::Bool(left == right))),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: binary.operator.lexeme.clone(),
                 expression: Expr::Binary(binary.clone()),
@@ -201,20 +217,22 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_grouping(&mut self, grouping: &Grouping) -> Result<LiteralVal, RuntimeError> {
+    fn visit_grouping(&mut self, grouping: &Grouping) -> AloxObjResult {
         self.visit_expr(&grouping.expression)
     }
 
-    fn visit_literal(&mut self, literal: &Literal) -> Result<LiteralVal, RuntimeError> {
-        Ok(literal.value.clone())
+    fn visit_literal(&mut self, literal: &Literal) -> AloxObjResult {
+        Ok(AloxObject::Value(literal.value.clone()))
     }
 
-    fn visit_unary(&mut self, unary: &Unary) -> Result<LiteralVal, RuntimeError> {
-        let right = self.visit_expr(&unary.right)?;
+    fn visit_unary(&mut self, unary: &Unary) -> AloxObjResult {
+        let right = self
+            .visit_expr(&unary.right)?
+            .to_value_with_info(unary.operator.line, &unary.operator.lexeme)?;
         match unary.operator._type {
             TokenType::Minus => {
-                if let LiteralVal::Number(num) = right {
-                    Ok(LiteralVal::Number(-num))
+                if let Value::Number(num) = right {
+                    Ok(AloxObject::Value(Value::Number(-num)))
                 } else {
                     Err(RuntimeError::InvalidOperand {
                         lexeme: unary.operator.lexeme.clone(),
@@ -223,7 +241,7 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
                     })
                 }
             }
-            TokenType::Bang => Ok(LiteralVal::Bool(!is_truthy(&right))),
+            TokenType::Bang => Ok(AloxObject::Value(Value::Bool(!is_truthy(&right)))),
             _ => Err(RuntimeError::InvalidOperator {
                 lexeme: unary.operator.lexeme.clone(),
                 expression: Expr::Unary(unary.clone()),
@@ -232,41 +250,53 @@ impl ExprVisitor<Result<LiteralVal, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_variable(&mut self, variable: &Variable) -> Result<LiteralVal, RuntimeError> {
+    fn visit_variable(&mut self, variable: &Variable) -> AloxObjResult {
         let val = self.environment.borrow().get(&variable.name)?;
         let val = val.as_ref().as_ref().unwrap();
-        self.interpret_expr(&val)
+        Ok(val.clone())
     }
 
-    fn visit_assign(&mut self, assign: &Assign) -> Result<LiteralVal, RuntimeError> {
-        let val = Expr::Literal(Literal {
-            value: self.visit_expr(&assign.value)?,
-        });
+    fn visit_assign(&mut self, assign: &Assign) -> AloxObjResult {
+        let val = self
+            .visit_expr(&assign.value)?
+            .to_value_with_info(assign.name.line, &assign.name.lexeme)?;
         self.environment
             .borrow_mut()
-            .assign(&assign.name, Some(val.clone()))?;
-        self.visit_expr(&val)
+            .assign(&assign.name, Some(AloxObject::Value(val.clone())))?;
+        Ok(AloxObject::Value(val))
     }
 
-    fn visit_logical(&mut self, logical: &Logical) -> Result<LiteralVal, RuntimeError> {
-        let left = self.visit_expr(&logical.left)?;
+    fn visit_logical(&mut self, logical: &Logical) -> AloxObjResult {
+        let left = self
+            .visit_expr(&logical.left)?
+            .to_value_with_info(logical.operator.line, &logical.operator.lexeme)?;
 
         if logical.operator._type == TokenType::Or {
             if is_truthy(&left) {
-                return Ok(left);
+                return Ok(AloxObject::Value(left));
             }
         } else if !is_truthy(&left) {
-            return Ok(left);
+            return Ok(AloxObject::Value(left));
         }
 
         self.visit_expr(&logical.right)
     }
+
+    fn visit_call(&mut self, call: &Call) -> AloxObjResult {
+        let function = self.visit_expr(&call.callee)?.to_function(call)?;
+        let mut arguments = vec![];
+        for arg in call.arguments.iter() {
+            arguments.push(self.visit_expr(arg)?);
+        }
+
+        function.call_mut(self, &arguments)
+    }
 }
 
-fn is_truthy(literal: &LiteralVal) -> bool {
+fn is_truthy(literal: &Value) -> bool {
     match literal {
-        LiteralVal::Nil(_) => false,
-        LiteralVal::Bool(boolean) => *boolean,
+        Value::Nil(_) => false,
+        Value::Bool(boolean) => *boolean,
         _ => true,
     }
 }

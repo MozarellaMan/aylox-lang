@@ -20,10 +20,10 @@ impl ExprVisitor<String> for AstPrinter {
 
     fn visit_literal(&mut self, literal: &Literal) -> String {
         match &literal.value {
-            LiteralVal::String(val) => val.clone(),
-            LiteralVal::Number(val) => val.to_string(),
-            LiteralVal::Nil(_) => "Nil".to_owned(),
-            LiteralVal::Bool(val) => val.to_string(),
+            Value::String(val) => val.clone(),
+            Value::Number(val) => val.to_string(),
+            Value::Nil(_) => "Nil".to_owned(),
+            Value::Bool(val) => val.to_string(),
         }
     }
 
@@ -40,6 +40,10 @@ impl ExprVisitor<String> for AstPrinter {
     }
 
     fn visit_logical(&mut self, _logical: &Logical) -> String {
+        todo!()
+    }
+
+    fn visit_call(&mut self, _call: &Call) -> String {
         todo!()
     }
 }

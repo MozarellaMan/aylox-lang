@@ -1,9 +1,9 @@
-use crate::{ast::Expr, error::RuntimeError, token::Token};
+use crate::{ast::AloxObject, error::RuntimeError, token::Token};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Environment {
     enclosing: Option<Rc<RefCell<Environment>>>,
-    values: HashMap<String, Rc<Option<Expr>>>,
+    values: HashMap<String, Rc<Option<AloxObject>>>,
 }
 
 impl Environment {
@@ -21,11 +21,11 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: String, value: Option<Expr>) {
-        self.values.insert(name, Rc::new(value));
+    pub fn define(&mut self, name: &str, value: Option<AloxObject>) {
+        self.values.insert(name.to_string(), Rc::new(value));
     }
 
-    pub fn assign(&mut self, name: &Token, value: Option<Expr>) -> Result<(), RuntimeError> {
+    pub fn assign(&mut self, name: &Token, value: Option<AloxObject>) -> Result<(), RuntimeError> {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.clone(), Rc::new(value));
             Ok(())
@@ -40,7 +40,7 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, name: &Token) -> Result<Rc<Option<Expr>>, RuntimeError> {
+    pub fn get(&self, name: &Token) -> Result<Rc<Option<AloxObject>>, RuntimeError> {
         let result =
             self.values
                 .get(&name.lexeme)
