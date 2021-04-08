@@ -5,6 +5,10 @@ use crate::{ast::*, functions::Callable, interpreter::Interpreter};
 pub struct Clock;
 
 impl Callable for Clock {
+    fn needs_mut(&self) -> bool {
+        false
+    }
+
     fn arity(&self) -> usize {
         0
     }

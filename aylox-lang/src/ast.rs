@@ -27,6 +27,7 @@ ast_gen!(
         "If_        : Expr condition, Stmt then_branch, Stmt? else_branch",
         "Print      : Expr expression",
         "While_     : Expr condition, Stmt body",
+        "Return_    : Token keyword, Expr value",
         "Var        : Token name, Expr? initializer",
         "Block      : Stmt* statements",
     ]

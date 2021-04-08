@@ -85,7 +85,6 @@ impl<'a> Parser<'a> {
         if self.token_match(&[TokenType::Fun]) {
             return self.function(FunctionKind::Function);
         }
-
         self.expression_statement()
     }
 
@@ -393,7 +392,7 @@ impl<'a> Parser<'a> {
 
     fn finish_call(&mut self, callee: Expr) -> ParseExprResult {
         let mut arguments = vec![];
-        if !self.check(&TokenType::LeftParen) {
+        if !self.check(&TokenType::RightParen) {
             loop {
                 if arguments.len() >= 255 {
                     let err = ParserError::FunctionArgumentLength {

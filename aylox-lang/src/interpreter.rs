@@ -7,8 +7,7 @@ use crate::{
 
 pub struct Interpreter {
     printer: AstPrinter,
-    pub environment: Rc<RefCell<Environment>>,
-    pub globals: Rc<RefCell<Environment>>,
+    pub global_env: Rc<RefCell<Environment>>,
 }
 impl Interpreter {
     pub fn new() -> Self {
@@ -16,8 +15,7 @@ impl Interpreter {
         globals.define("clock", Some(AloxObject::Function(Rc::new(Clock))));
         Self {
             printer: AstPrinter,
-            environment: Rc::new(RefCell::new(Environment::new())),
-            globals: Rc::new(RefCell::new(Environment::new())),
+            global_env: Rc::new(RefCell::new(globals)),
         }
     }
 
@@ -37,9 +35,9 @@ impl Interpreter {
         statements: &[Stmt],
         environment: Environment,
     ) -> Result<(), RuntimeError> {
-        let previous = mem::replace(&mut self.environment, Rc::new(RefCell::new(environment)));
+        let previous = mem::replace(&mut self.global_env, Rc::new(RefCell::new(environment)));
         let result = self.interpret(statements);
-        self.environment = previous;
+        self.global_env = previous;
         result
     }
 }
@@ -68,17 +66,17 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             let val = self
                 .interpret_expr(val)?
                 .to_value_with_info(var.name.line, &var.name.lexeme)?;
-            self.environment
+            self.global_env
                 .borrow_mut()
                 .define(&var.name.lexeme, Some(AloxObject::Value(val)));
         } else {
-            self.environment.borrow_mut().define(&var.name.lexeme, None);
+            self.global_env.borrow_mut().define(&var.name.lexeme, None);
         }
         Ok(())
     }
 
     fn visit_block(&mut self, block: &Block) -> Result<(), RuntimeError> {
-        let new_env = Environment::with_enclosing(self.environment.clone());
+        let new_env = Environment::with_enclosing(self.global_env.clone());
         self.interpret_block(&block.statements, new_env)
     }
 
@@ -101,11 +99,15 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
     fn visit_function(&mut self, function: &Function) -> Result<(), RuntimeError> {
         let alox_function = AloxFunction::new(function.clone());
-        self.environment.borrow_mut().define(
+        self.global_env.borrow_mut().define(
             &function.name.lexeme,
             Some(AloxObject::Function(Rc::new(alox_function))),
         );
         Ok(())
+    }
+
+    fn visit_return_(&mut self, _return_: &Return_) -> Result<(), RuntimeError> {
+        todo!()
     }
 }
 
@@ -251,7 +253,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
     }
 
     fn visit_variable(&mut self, variable: &Variable) -> AloxObjResult {
-        let val = self.environment.borrow().get(&variable.name)?;
+        let val = self.global_env.borrow().get(&variable.name)?;
         let val = val.as_ref().as_ref().unwrap();
         Ok(val.clone())
     }
@@ -260,7 +262,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
         let val = self
             .visit_expr(&assign.value)?
             .to_value_with_info(assign.name.line, &assign.name.lexeme)?;
-        self.environment
+        self.global_env
             .borrow_mut()
             .assign(&assign.name, Some(AloxObject::Value(val.clone())))?;
         Ok(AloxObject::Value(val))
@@ -289,7 +291,11 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
             arguments.push(self.visit_expr(arg)?);
         }
 
-        function.call_mut(self, &arguments)
+        if function.needs_mut() {
+            function.call_mut(self, &arguments)
+        } else {
+            function.call(&self, &arguments)
+        }
     }
 }
 

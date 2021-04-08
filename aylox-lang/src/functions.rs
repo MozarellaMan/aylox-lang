@@ -4,6 +4,7 @@ use std::fmt::Display;
 use crate::{ast::*, environment::Environment, interpreter::Interpreter};
 
 pub trait Callable {
+    fn needs_mut(&self) -> bool;
     fn arity(&self) -> usize;
     fn call(&self, interpreter: &Interpreter, args: &[AloxObject]) -> AloxObjResult;
     fn call_mut(&self, interpreter: &mut Interpreter, args: &[AloxObject]) -> AloxObjResult;
@@ -15,12 +16,15 @@ pub struct AloxFunction {
 }
 
 impl Callable for AloxFunction {
+    fn needs_mut(&self) -> bool {
+        true
+    }
     fn arity(&self) -> usize {
         self.declaration.params.len()
     }
 
     fn call_mut(&self, interpreter: &mut Interpreter, args: &[AloxObject]) -> AloxObjResult {
-        let mut environment = Environment::with_enclosing(interpreter.globals.clone());
+        let mut environment = Environment::with_enclosing(interpreter.global_env.clone());
         for (i, param) in self.declaration.params.iter().enumerate() {
             environment.define(&param.lexeme, Some(args[i].clone()));
         }
