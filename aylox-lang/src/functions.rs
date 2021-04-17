@@ -1,7 +1,7 @@
 use core::fmt::Debug;
-use std::fmt::Display;
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
-use crate::{ast::*, environment::Environment, interpreter::Interpreter};
+use crate::{ast::*, environment::Environment, error::RuntimeException, interpreter::Interpreter};
 
 pub trait Callable {
     fn needs_mut(&self) -> bool;
@@ -13,6 +13,7 @@ pub trait Callable {
 #[derive(new, Clone, Debug)]
 pub struct AloxFunction {
     declaration: Function,
+    closure: Rc<RefCell<Environment>>,
 }
 
 impl Callable for AloxFunction {
@@ -23,18 +24,26 @@ impl Callable for AloxFunction {
         self.declaration.params.len()
     }
 
+    fn call(&self, _interpreter: &Interpreter, _args: &[AloxObject]) -> AloxObjResult {
+        todo!()
+    }
+
     fn call_mut(&self, interpreter: &mut Interpreter, args: &[AloxObject]) -> AloxObjResult {
-        let mut environment = Environment::with_enclosing(interpreter.global_env.clone());
+        let mut environment = Environment::with_enclosing(self.closure.clone());
         for (i, param) in self.declaration.params.iter().enumerate() {
             environment.define(&param.lexeme, Some(args[i].clone()));
         }
 
-        interpreter.interpret_block(&self.declaration.body, environment)?;
-        Ok(AloxObject::Value(Value::Nil(Nil)))
-    }
-
-    fn call(&self, _interpreter: &Interpreter, _args: &[AloxObject]) -> AloxObjResult {
-        todo!()
+        let result = interpreter.interpret_block(&self.declaration.body, environment);
+        if let Err(err) = result {
+            if let RuntimeException::Return { obj: val } = err {
+                Ok(val)
+            } else {
+                Err(err)
+            }
+        } else {
+            Ok(AloxObject::Value(Value::Nil(Nil)))
+        }
     }
 }
 

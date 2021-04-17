@@ -85,7 +85,22 @@ impl<'a> Parser<'a> {
         if self.token_match(&[TokenType::Fun]) {
             return self.function(FunctionKind::Function);
         }
+        if self.token_match(&[TokenType::Return]) {
+            return self.return_statement();
+        }
         self.expression_statement()
+    }
+
+    fn return_statement(&mut self) -> ParseStmtResult {
+        let keyword = self.previous().clone();
+        let val = if !self.check(&TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        
+        self.consume(&TokenType::Semicolon, "Expected ';' after return value.")?;
+        Ok(Stmt::Return_(Return_::new(keyword, val)))
     }
 
     fn function(&mut self, kind: FunctionKind) -> ParseStmtResult {

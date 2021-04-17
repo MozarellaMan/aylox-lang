@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::ast::Expr;
+use crate::ast::{AloxObject, Expr};
 // TODO Newtype for lines in code
 
 #[derive(Error, Debug)]
@@ -29,7 +29,7 @@ pub enum SyntaxError {
     UnterminatedString { line: usize },
 }
 #[derive(Error, Debug)]
-pub enum RuntimeError {
+pub enum RuntimeException {
     #[error("[line {line}] '{lexeme}' operands must be {expected}.")]
     InvalidOperand {
         lexeme: String,
@@ -57,6 +57,8 @@ pub enum RuntimeError {
     },
     #[error("[line {line}] Expected a function at '{lexeme}")]
     ExpectedFunction { lexeme: String, line: usize },
+    #[error("Returning {obj:?}")]
+    Return { obj: AloxObject },
 }
 
 #[derive(Error, Debug)]
@@ -70,5 +72,5 @@ pub enum AyloxError {
     #[error("Parsing failed")]
     ParserError(#[from] ParserError),
     #[error("Runtime error: {0}")]
-    RuntimeError(#[from] RuntimeError),
+    RuntimeError(#[from] RuntimeException),
 }

@@ -1,6 +1,6 @@
 use std::{fmt::Display, rc::Rc};
 
-use crate::{error::RuntimeError, functions::Callable, token::Token};
+use crate::{error::RuntimeException, functions::Callable, token::Token};
 use ast_gen::ast_gen;
 
 ast_gen!(
@@ -27,14 +27,14 @@ ast_gen!(
         "If_        : Expr condition, Stmt then_branch, Stmt? else_branch",
         "Print      : Expr expression",
         "While_     : Expr condition, Stmt body",
-        "Return_    : Token keyword, Expr value",
+        "Return_    : Token keyword, Expr? value",
         "Var        : Token name, Expr? initializer",
         "Block      : Stmt* statements",
     ]
 );
 
-pub type AloxObjResult = Result<AloxObject, RuntimeError>;
-pub type ValueResult = Result<Value, RuntimeError>;
+pub type AloxObjResult = Result<AloxObject, RuntimeException>;
+pub type ValueResult = Result<Value, RuntimeException>;
 
 #[derive(Clone, Debug)]
 pub enum AloxObject {
@@ -48,18 +48,18 @@ impl AloxObject {
         if let AloxObject::Value(val) = self {
             Ok(val)
         } else {
-            Err(RuntimeError::ValueMissing {
+            Err(RuntimeException::ValueMissing {
                 line: None,
                 lexeme: None,
             })
         }
     }
 
-    pub fn to_function(self, callee: &Call) -> Result<Rc<dyn Callable>, RuntimeError> {
+    pub fn to_function(self, callee: &Call) -> Result<Rc<dyn Callable>, RuntimeException> {
         if let AloxObject::Function(func) = self {
             Ok(func)
         } else {
-            Err(RuntimeError::ExpectedFunction {
+            Err(RuntimeException::ExpectedFunction {
                 line: callee.paren.line,
                 lexeme: callee.paren.lexeme.clone(),
             })
@@ -71,7 +71,7 @@ impl AloxObject {
             Ok(val)
         } else {
             dbg!(&self);
-            Err(RuntimeError::ValueMissing {
+            Err(RuntimeException::ValueMissing {
                 line: Some(line),
                 lexeme: Some(lexeme.to_string()),
             })

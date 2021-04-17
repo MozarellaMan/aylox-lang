@@ -1,9 +1,17 @@
-use crate::{ast::AloxObject, error::RuntimeError, token::Token};
+use crate::{ast::AloxObject, error::RuntimeException, functions::Callable, token::Token};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+#[derive(Debug, Clone)]
 pub struct Environment {
     enclosing: Option<Rc<RefCell<Environment>>>,
-    values: HashMap<String, Rc<Option<AloxObject>>>,
+    values: HashMap<String, EnvValue>,
+}
+
+#[derive(Clone, Debug)]
+enum EnvValue {
+    Object(Rc<Option<AloxObject>>),
+    Function(Rc<dyn Callable>),
+    Empty
 }
 
 impl Environment {
@@ -22,43 +30,56 @@ impl Environment {
     }
 
     pub fn define(&mut self, name: &str, value: Option<AloxObject>) {
-        self.values.insert(name.to_string(), Rc::new(value));
+       self.insert_env_value(name, value);
     }
 
-    pub fn assign(&mut self, name: &Token, value: Option<AloxObject>) -> Result<(), RuntimeError> {
+    fn insert_env_value(&mut self, name: &str, value: Option<AloxObject>) {
+        if let Some(value) = value {
+            if let AloxObject::Function(func) = value {
+                self.values.insert(name.to_string(), EnvValue::Function(func));
+            } else {
+                self.values.insert(name.to_string(), EnvValue::Object(Rc::new(Some(value))));
+            }
+        } else {
+            self.values.insert(name.to_string(), EnvValue::Empty);
+        }
+    }
+
+    pub fn assign(&mut self, name: &Token, value: Option<AloxObject>) -> Result<(), RuntimeException> {
         if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.clone(), Rc::new(value));
+            self.insert_env_value(&name.lexeme, value);
             Ok(())
         } else {
             if let Some(enclosing) = &self.enclosing {
                 return enclosing.borrow_mut().assign(name, value);
             }
-            Err(RuntimeError::UndefinedVariable {
+            Err(RuntimeException::UndefinedVariable {
                 lexeme: name.lexeme.clone(),
                 line: name.line,
             })
         }
     }
 
-    pub fn get(&self, name: &Token) -> Result<Rc<Option<AloxObject>>, RuntimeError> {
+    pub fn get(&self, name: &Token) -> Result<Rc<Option<AloxObject>>, RuntimeException> {
         let result =
             self.values
                 .get(&name.lexeme)
                 .cloned()
-                .ok_or(RuntimeError::UndefinedVariable {
+                .ok_or(RuntimeException::UndefinedVariable {
                     lexeme: name.lexeme.clone(),
                     line: name.line,
                 });
 
         match result {
             Ok(res) => {
-                if res.is_some() {
-                    Ok(res)
-                } else {
-                    Err(RuntimeError::NilAccess {
+                if let EnvValue::Empty = res {
+                    Err(RuntimeException::NilAccess {
                         line: name.line,
                         lexeme: name.lexeme.clone(),
                     })
+                } else {
+                    let res: Rc<Option<AloxObject>> = Environment::env_value_to_obj(res);
+                    Ok(res)
                 }
             }
             Err(err) => match &self.enclosing {
@@ -69,6 +90,14 @@ impl Environment {
                 }
                 None => Err(err),
             },
+        }
+    }
+
+    fn env_value_to_obj(val: EnvValue) -> Rc<Option<AloxObject>> {
+        match val {
+            EnvValue::Object(obj) => obj,
+            EnvValue::Function(func) => Rc::new(Some(AloxObject::Function(func))),
+            EnvValue::Empty => Rc::new(None)
         }
     }
 }

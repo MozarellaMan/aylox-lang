@@ -1,7 +1,7 @@
 use std::{cell::RefCell, mem, rc::Rc};
 
 use crate::{
-    ast::*, ast_printer::AstPrinter, environment::Environment, error::RuntimeError,
+    ast::*, ast_printer::AstPrinter, environment::Environment, error::RuntimeException,
     functions::AloxFunction, native_functions::Clock, token::TokenType,
 };
 
@@ -19,7 +19,7 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeException> {
         for stmt in statements {
             self.visit_stmt(stmt)?;
         }
@@ -34,7 +34,7 @@ impl Interpreter {
         &mut self,
         statements: &[Stmt],
         environment: Environment,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), RuntimeException> {
         let previous = mem::replace(&mut self.global_env, Rc::new(RefCell::new(environment)));
         let result = self.interpret(statements);
         self.global_env = previous;
@@ -48,19 +48,19 @@ impl Default for Interpreter {
     }
 }
 
-impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
-    fn visit_expression(&mut self, expression: &Expression) -> Result<(), RuntimeError> {
+impl StmtVisitor<Result<(), RuntimeException>> for Interpreter {
+    fn visit_expression(&mut self, expression: &Expression) -> Result<(), RuntimeException> {
         self.interpret_expr(&expression.expression)?;
         Ok(())
     }
 
-    fn visit_print(&mut self, print: &Print) -> Result<(), RuntimeError> {
+    fn visit_print(&mut self, print: &Print) -> Result<(), RuntimeException> {
         let value = self.interpret_expr(&print.expression)?.to_value()?;
         println!("{}", self.printer.print(&Expr::Literal(Literal { value })));
         Ok(())
     }
 
-    fn visit_var(&mut self, var: &Var) -> Result<(), RuntimeError> {
+    fn visit_var(&mut self, var: &Var) -> Result<(), RuntimeException> {
         let val = var.initializer.as_ref();
         if let Some(val) = val {
             let val = self
@@ -75,30 +75,30 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_block(&mut self, block: &Block) -> Result<(), RuntimeError> {
+    fn visit_block(&mut self, block: &Block) -> Result<(), RuntimeException> {
         let new_env = Environment::with_enclosing(self.global_env.clone());
         self.interpret_block(&block.statements, new_env)
     }
 
-    fn visit_if_(&mut self, if_: &If_) -> Result<(), RuntimeError> {
+    fn visit_if_(&mut self, if_: &If_) -> Result<(), RuntimeException> {
         if is_truthy(&self.visit_expr(&if_.condition)?.to_value()?) {
             self.visit_stmt(&if_.then_branch)?;
         }
         if let Some(else_branch) = &if_.else_branch {
             self.visit_stmt(else_branch)?;
         }
-        Err(RuntimeError::ControlFlowError)
+        Ok(())
     }
 
-    fn visit_while_(&mut self, while_: &While_) -> Result<(), RuntimeError> {
+    fn visit_while_(&mut self, while_: &While_) -> Result<(), RuntimeException> {
         while is_truthy(&self.visit_expr(&while_.condition)?.to_value()?) {
             self.visit_stmt(&while_.body)?;
         }
         Ok(())
     }
 
-    fn visit_function(&mut self, function: &Function) -> Result<(), RuntimeError> {
-        let alox_function = AloxFunction::new(function.clone());
+    fn visit_function(&mut self, function: &Function) -> Result<(), RuntimeException> {
+        let alox_function = AloxFunction::new(function.clone(), self.global_env.clone());
         self.global_env.borrow_mut().define(
             &function.name.lexeme,
             Some(AloxObject::Function(Rc::new(alox_function))),
@@ -106,8 +106,12 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_return_(&mut self, _return_: &Return_) -> Result<(), RuntimeError> {
-        todo!()
+    fn visit_return_(&mut self, return_: &Return_) -> Result<(), RuntimeException> {
+        let val = if let Some(val) = &return_.value {
+           self.visit_expr(val)?
+        } else { AloxObject::Value(Value::Nil(Nil)) };
+
+        Err(RuntimeException::Return {obj: val})
     }
 }
 
@@ -125,7 +129,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Number(x - y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -136,7 +140,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Number(x / y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -147,7 +151,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Number(x * y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -165,7 +169,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 (Value::Number(x), Value::String(y)) => {
                     Ok(AloxObject::Value(Value::String(format!("{}{}", x, y))))
                 }
-                _ => Err(RuntimeError::InvalidOperand {
+                _ => Err(RuntimeException::InvalidOperand {
                     lexeme: binary.operator.lexeme.clone(),
                     expected: "Numbers, Strings".to_string(),
                     line: binary.operator.line,
@@ -175,7 +179,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Bool(x > y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -186,7 +190,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Bool(x >= y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -197,7 +201,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Bool(x < y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -208,7 +212,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let (Value::Number(x), Value::Number(y)) = (left, right) {
                     Ok(AloxObject::Value(Value::Bool(x <= y)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: binary.operator.lexeme.clone(),
                         expected: "Number".to_string(),
                         line: binary.operator.line,
@@ -217,7 +221,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
             }
             TokenType::BangEqual => Ok(AloxObject::Value(Value::Bool(left != right))),
             TokenType::EqualEqual => Ok(AloxObject::Value(Value::Bool(left == right))),
-            _ => Err(RuntimeError::InvalidOperator {
+            _ => Err(RuntimeException::InvalidOperator {
                 lexeme: binary.operator.lexeme.clone(),
                 expression: Expr::Binary(binary.clone()),
                 line: binary.operator.line,
@@ -242,7 +246,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 if let Value::Number(num) = right {
                     Ok(AloxObject::Value(Value::Number(-num)))
                 } else {
-                    Err(RuntimeError::InvalidOperand {
+                    Err(RuntimeException::InvalidOperand {
                         lexeme: unary.operator.lexeme.clone(),
                         expected: "number".to_string(),
                         line: unary.operator.line,
@@ -250,7 +254,7 @@ impl ExprVisitor<AloxObjResult> for Interpreter {
                 }
             }
             TokenType::Bang => Ok(AloxObject::Value(Value::Bool(!is_truthy(&right)))),
-            _ => Err(RuntimeError::InvalidOperator {
+            _ => Err(RuntimeException::InvalidOperator {
                 lexeme: unary.operator.lexeme.clone(),
                 expression: Expr::Unary(unary.clone()),
                 line: unary.operator.line,
