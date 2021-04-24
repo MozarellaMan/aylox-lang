@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "ast-gen",
-    "aylox-lang"
+    "aylox-lang",
+    "alox-bytecode"
 ]

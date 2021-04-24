@@ -11,7 +11,7 @@ pub struct Environment {
 enum EnvValue {
     Object(Rc<Option<AloxObject>>),
     Function(Rc<dyn Callable>),
-    Empty
+    Empty,
 }
 
 impl Environment {
@@ -30,22 +30,28 @@ impl Environment {
     }
 
     pub fn define(&mut self, name: &str, value: Option<AloxObject>) {
-       self.insert_env_value(name, value);
+        self.insert_env_value(name, value);
     }
 
     fn insert_env_value(&mut self, name: &str, value: Option<AloxObject>) {
         if let Some(value) = value {
             if let AloxObject::Function(func) = value {
-                self.values.insert(name.to_string(), EnvValue::Function(func));
+                self.values
+                    .insert(name.to_string(), EnvValue::Function(func));
             } else {
-                self.values.insert(name.to_string(), EnvValue::Object(Rc::new(Some(value))));
+                self.values
+                    .insert(name.to_string(), EnvValue::Object(Rc::new(Some(value))));
             }
         } else {
             self.values.insert(name.to_string(), EnvValue::Empty);
         }
     }
 
-    pub fn assign(&mut self, name: &Token, value: Option<AloxObject>) -> Result<(), RuntimeException> {
+    pub fn assign(
+        &mut self,
+        name: &Token,
+        value: Option<AloxObject>,
+    ) -> Result<(), RuntimeException> {
         if self.values.contains_key(&name.lexeme) {
             self.insert_env_value(&name.lexeme, value);
             Ok(())
@@ -97,7 +103,7 @@ impl Environment {
         match val {
             EnvValue::Object(obj) => obj,
             EnvValue::Function(func) => Rc::new(Some(AloxObject::Function(func))),
-            EnvValue::Empty => Rc::new(None)
+            EnvValue::Empty => Rc::new(None),
         }
     }
 }

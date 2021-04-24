@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        
+
         self.consume(&TokenType::Semicolon, "Expected ';' after return value.")?;
         Ok(Stmt::Return_(Return_::new(keyword, val)))
     }

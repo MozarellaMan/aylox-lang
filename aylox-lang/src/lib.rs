@@ -17,6 +17,7 @@ pub mod interpreter;
 pub mod native_functions;
 pub mod parser;
 pub mod prompt;
+pub mod resolver;
 pub mod scanner;
 pub mod token;
 

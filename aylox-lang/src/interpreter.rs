@@ -40,6 +40,10 @@ impl Interpreter {
         self.global_env = previous;
         result
     }
+
+    pub fn resolve_expr(&mut self, expr: &Expr, depth: usize) {
+        todo!()
+    }
 }
 
 impl Default for Interpreter {
@@ -108,10 +112,12 @@ impl StmtVisitor<Result<(), RuntimeException>> for Interpreter {
 
     fn visit_return_(&mut self, return_: &Return_) -> Result<(), RuntimeException> {
         let val = if let Some(val) = &return_.value {
-           self.visit_expr(val)?
-        } else { AloxObject::Value(Value::Nil(Nil)) };
+            self.visit_expr(val)?
+        } else {
+            AloxObject::Value(Value::Nil(Nil))
+        };
 
-        Err(RuntimeException::Return {obj: val})
+        Err(RuntimeException::Return { obj: val })
     }
 }
 

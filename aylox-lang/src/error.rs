@@ -74,3 +74,9 @@ pub enum AyloxError {
     #[error("Runtime error: {0}")]
     RuntimeError(#[from] RuntimeException),
 }
+
+#[derive(Debug, Error)]
+pub enum ResolverError {
+    #[error("[line {line}] Can't read local variable in its own initializer at '{lexeme}")]
+    ReadInOwnInitializer { lexeme: String, line: usize },
+}
