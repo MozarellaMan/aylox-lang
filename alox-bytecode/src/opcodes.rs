@@ -1,11 +1,17 @@
 use std::convert::{TryFrom, TryInto};
 
+
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Op {
     Return = 0,
     Constant,
-    ConstantLong
+    ConstantLong,
+    Add,
+    Subract,
+    Multiply,
+    Divide,
+    Negate
 }
 
 impl Op {
@@ -22,7 +28,7 @@ impl TryFrom<u8> for Op {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value > 2 {
+        if value > Op::Negate as u8 {
             Err(())
         } else {
             unsafe { Ok(core::mem::transmute(value)) }

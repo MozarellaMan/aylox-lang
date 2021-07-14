@@ -1,18 +1,23 @@
-use crate::{
-    chunk::{Chunk, Value},
-    opcodes::Op,
-};
+use crate::{chunk::{Chunk, Value}, opcodes::Op};
+
+const STACK_MAX: usize = 256;
 
 pub type InterpreterResult = Result<(), InterpreterError>;
 pub struct Vm {
     chunk: Chunk,
     ip: usize,
+    stack: Vec<Value>,
 }
 
 impl Vm {
     pub fn new(chunk: Chunk) -> Self {
-        Vm { chunk, ip: 0 }
+        Vm {
+            chunk,
+            ip: 0,
+            stack: Vec::with_capacity(STACK_MAX),
+        }
     }
+
     pub fn interpret(&mut self) -> InterpreterResult {
         self.run()
     }
@@ -22,19 +27,38 @@ impl Vm {
             if self.ip >= self.chunk.code.len() {
                 break;
             }
+            #[cfg(debug_assertions)]
+            println!("{:?}", &self.stack);
             let next_byte = self.next_byte();
             let instruction = Op::from_u8(next_byte);
-            dbg!(instruction);
+            #[cfg(debug_assertions)]
+            self.chunk.disassemble_instruction(self.ip - 1);
             match instruction {
-                Op::Return => return Ok(()),
-                Op::Constant => {
+                Op::Return => {
+                    println!("{}", self.pop())
+                }
+                Op::Constant | Op::ConstantLong => {
                     let index = self.next_byte();
                     let constant = self.read_constant(index);
-                    println!("{}", constant);
+                    self.push(constant);
                 }
-                Op::ConstantLong => {}
+                Op::Negate => {
+                    let operand = self.pop();
+                    self.push(-operand);
+                }
+                _ => {}
             }
         })
+    }
+
+    #[inline]
+    fn pop(&mut self) -> Value {
+        self.stack.pop().expect("Stack Underflow!")
+    }
+
+    #[inline]
+    fn push(&mut self, value: Value) {
+        self.stack.push(value)
     }
 
     fn next_byte(&mut self) -> u8 {

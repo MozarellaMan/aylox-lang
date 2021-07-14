@@ -23,6 +23,8 @@ impl Parse for Definition {
     }
 }
 
+
+
 #[proc_macro]
 pub fn ast_gen(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let output = transform_definition(parse_macro_input!(input as Definition));
