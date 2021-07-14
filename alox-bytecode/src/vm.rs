@@ -2,7 +2,6 @@ use crate::{
     chunk::{Chunk, Value},
     opcodes::Op,
 };
-use std::convert::TryInto;
 
 pub type InterpreterResult = Result<(), InterpreterError>;
 pub struct Vm {

@@ -1,5 +1,4 @@
 use crate::opcodes::Op;
-use std::convert::TryInto;
 use std::usize;
 pub type Value = f64;
 pub struct Chunk {
