@@ -1,10 +1,10 @@
 use crate::opcodes::Op;
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::usize;
 pub type Value = f64;
 pub struct Chunk {
-    code: Vec<u8>,
-    constants: Vec<Value>,
+    pub code: Vec<u8>,
+    pub constants: Vec<Value>,
     lines: Vec<usize>,
 }
 
@@ -25,11 +25,27 @@ impl Chunk {
         println!("== {} ==", name);
         let mut offset = 0;
         loop {
-            if offset >= self.code.len() { break; }
-
+            if offset >= self.code.len() {
+                break;
+            }
             offset = self.disassemble_instruction(offset);
         }
+    }
 
+    pub fn write_constant(&mut self, value: Value, line: usize) {
+        self.lines.push(line);
+        let constant = self.add_constant(value);
+        if constant < 256 {
+            self.write(Op::Constant.u8(), line);
+            self.write(constant as u8, line);
+        } else if constant < 16_777_216 {
+            self.write(Op::ConstantLong.u8(), line);
+            let byte_representation = constant.to_le_bytes();
+            let (operand, _) = byte_representation.split_at(3);
+            operand.iter().for_each(|b| self.write(*b, line));
+        } else {
+            panic!("Max alox constant reached! (16.7m constants)")
+        }
     }
 
     pub fn add_constant(&mut self, value: Value) -> usize {
@@ -47,19 +63,15 @@ impl Chunk {
         }
 
         let instruction = self.code[offset];
-        let opcode = Op::try_from(instruction);
+        let opcode = Op::from_u8(instruction);
 
-        if let Ok(op) = opcode {
-            match op {
-                Op::Constant => self.print_constant_instruction(op, offset),
-                _default =>  {
-                    println!("{:?}", op);
-                    return offset + 1;
-                }
+        match opcode {
+            Op::Constant => self.print_constant_instruction(opcode, offset),
+            Op::ConstantLong => self.print_constant_long_instruction(opcode, offset),
+            _default => {
+                println!("{:?}", opcode);
+                return offset + 1;
             }
-        } else {
-            println!("Unknown opcode {}", instruction);
-            return offset + 1;
         }
     }
 
@@ -68,5 +80,20 @@ impl Chunk {
         let value = self.constants[constant as usize];
         println!("{:?} \t{} '{}'", op, offset, value);
         offset + 2
+    }
+
+    fn print_constant_long_instruction(&self, op: Op, offset: usize) -> usize {
+        let start = offset + 1;
+        let end = offset + 3;
+        let mut index = [0u8; 4];
+        let constant = &self.code[start..=end];
+        let (num, padding) = index.split_at_mut(constant.len());
+        num.copy_from_slice(constant);
+        padding.fill(0);
+        let constant = u32::from_le_bytes(index);
+        let value = self.constants[constant as usize];
+
+        println!("{:?} \t{} '{}'", op, offset, value);
+        offset + 4
     }
 }
