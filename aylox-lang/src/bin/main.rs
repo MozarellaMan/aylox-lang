@@ -3,7 +3,7 @@ use clap::{App, Arg, SubCommand};
 
 fn main() {
     const VERSION: &str = env!("CARGO_PKG_VERSION");
-    let matches = App::new("Aylox")
+    let matches = App::new("Alox")
         .version(VERSION)
         .author("Ayomide B. <ayoeze@hotmail.com>")
         .about("A Lox programming language")

@@ -1,4 +1,4 @@
-use crate::{chunk::{Chunk, Value}, opcodes::Op};
+use crate::{chunk::{Chunk, Value}, compiler, opcodes::Op};
 
 const STACK_UNDERFLOW: &str = "Stack underflow!";
 
@@ -28,7 +28,12 @@ impl Vm {
         }
     }
 
-    pub fn interpret(&mut self) -> InterpreterResult {
+    pub fn interpret(&self, source: &str) -> InterpreterResult {
+        compiler::compile(source);
+        Ok(())
+    }
+
+    pub fn interpret_current_chunk(&mut self) -> InterpreterResult {
         self.run()
     }
 

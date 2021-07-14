@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 thiserror = "1.0"
+rustyline = "8.0"
+clap = "2.3"
