@@ -1,6 +1,16 @@
 use crate::{chunk::{Chunk, Value}, opcodes::Op};
 
-const STACK_MAX: usize = 256;
+const STACK_UNDERFLOW: &str = "Stack underflow!";
+
+macro_rules! binary_op {
+    ($self:ident,$operator:tt) => {
+        {
+            let b = $self.pop();
+            let a = $self.pop();
+            $self.push(a $operator b);
+        }
+    };
+}
 
 pub type InterpreterResult = Result<(), InterpreterError>;
 pub struct Vm {
@@ -14,7 +24,7 @@ impl Vm {
         Vm {
             chunk,
             ip: 0,
-            stack: Vec::with_capacity(STACK_MAX),
+            stack: Vec::new(),
         }
     }
 
@@ -42,18 +52,22 @@ impl Vm {
                     let constant = self.read_constant(index);
                     self.push(constant);
                 }
-                Op::Negate => {
-                    let operand = self.pop();
-                    self.push(-operand);
-                }
-                _ => {}
+                Op::Negate => *self.peek() = -*self.peek(),
+                Op::Add => binary_op!(self, +),
+                Op::Subract => binary_op!(self, -),
+                Op::Multiply => binary_op!(self, *),
+                Op::Divide => binary_op!(self, /)
             }
         })
     }
 
+    fn peek(&mut self) -> &mut Value {
+        self.stack.last_mut().expect(STACK_UNDERFLOW)
+    }
+
     #[inline]
     fn pop(&mut self) -> Value {
-        self.stack.pop().expect("Stack Underflow!")
+        self.stack.pop().expect(STACK_UNDERFLOW)
     }
 
     #[inline]
