@@ -84,6 +84,8 @@ impl<'a> Scanner<'a> {
                     while self.peek() != b'\n' && !self.is_at_end() {
                         self.advance();
                     }
+                } else {
+                    break;
                 }
             } else if char.is_ascii_whitespace() {
                 self.advance();
@@ -102,7 +104,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn peek_next(&self) -> u8 {
-        if self.is_at_end() {
+        if self.is_at_end() || self.current + 1 >= self.source.len() {
             return b'\0';
         }
         self.source.as_bytes()[self.current + 1]
@@ -189,9 +191,9 @@ impl<'a> Scanner<'a> {
     }
 
     fn check_keyword(&self, start: usize, length: usize, rest: &str, kind: TokenKind) -> TokenKind {
-        let end = self.start+ start + length;
+        let end = self.start + start + length;
         if self.current_token_length() == start + length
-            && self.source[self.start+start..end] == *rest
+            && self.source[self.start + start..end] == *rest
         {
             kind
         } else {
